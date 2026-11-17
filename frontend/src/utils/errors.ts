@@ -1,8 +1,9 @@
 import axios from 'axios'
+import { SITE_NAME } from '@/config/site'
 export function messageFromError(error: unknown, fallback: string) {
   if (axios.isAxiosError(error)) {
     // No response at all means the server is down or the connection dropped, not that the user typed something wrong.
-    if (!error.response) return 'We can’t reach MarketDay right now. Check your internet connection and try again.'
+    if (!error.response) return `We can’t reach ${SITE_NAME} right now. Check your internet connection and try again.`
     if (error.response.status === 429) return 'Too many attempts. Please wait a few minutes and try again.'
     if (error.response.status >= 500) return 'Something went wrong on our side. Please try again in a moment.'
     const data = error.response?.data as Record<string, unknown> | undefined

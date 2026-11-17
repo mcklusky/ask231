@@ -9,7 +9,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90',
-        // MarketDay red: the main call to action ("Post an ad", "Sign up to sell")
+        // the site red: the main call to action ("Post an ad", "Sign up to sell")
         cta: 'bg-brand-red text-white shadow-sm hover:bg-brand-red-hover',
         destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
         outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework.fields import IntegerField
@@ -68,6 +69,7 @@ class AdvertisementSerializer(serializers.ModelSerializer):
     image_uploads = serializers.ListField(child=serializers.ImageField(), write_only=True, required=False, allow_empty=True)
     seller_name = serializers.SerializerMethodField()
     seller_verified = serializers.SerializerMethodField()
+    seller_phone_verified = serializers.SerializerMethodField()
     currency = serializers.RegexField(r"^[A-Z]{3}$", max_length=3)
     country = serializers.CharField(max_length=100, default="Liberia")
     phone_number = serializers.RegexField(r"^\+?[0-9][0-9 ()-]{5,18}[0-9]$", max_length=20)
@@ -75,12 +77,15 @@ class AdvertisementSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Advertisement
-        fields = ["id", "slug", "title", "description", "price", "currency", "condition", "status", "rejection_reason", "phone_number", "whatsapp_number", "views_count", "category", "category_id", "subcategory", "subcategory_id", "country", "region", "city", "county", "county_id", "town", "town_id", "images", "image_uploads", "seller_name", "seller_verified", "created_at", "updated_at", "expires_at"]
-        read_only_fields = ["id", "slug", "status", "rejection_reason", "views_count", "seller_name", "seller_verified", "created_at", "updated_at", "expires_at"]
+        fields = ["id", "slug", "title", "description", "price", "currency", "condition", "status", "rejection_reason", "phone_number", "whatsapp_number", "views_count", "category", "category_id", "subcategory", "subcategory_id", "country", "region", "city", "landmark", "job_type", "pay_period", "how_to_apply", "county", "county_id", "town", "town_id", "images", "image_uploads", "seller_name", "seller_verified", "seller_phone_verified", "created_at", "updated_at", "expires_at"]
+        read_only_fields = ["id", "slug", "status", "rejection_reason", "views_count", "seller_name", "seller_verified", "seller_phone_verified", "created_at", "updated_at", "expires_at"]
 
     def get_seller_name(self, obj):
         seller = getattr(obj.seller, "seller_profile", None)
-        return (seller.business_name if seller and seller.business_name else f"{obj.seller.first_name} {obj.seller.last_name}".strip()) or obj.seller.email
+        return (seller.business_name if seller and seller.business_name else f"{obj.seller.first_name} {obj.seller.last_name}".strip()) or f"{settings.SITE_NAME} seller"  # never fall back to the email: it would be public
+
+    def get_seller_phone_verified(self, obj):
+        return bool(obj.seller.phone_verified_at)
 
     def get_seller_verified(self, obj):
         seller = getattr(obj.seller, "seller_profile", None)
@@ -123,6 +128,15 @@ class AdvertisementSerializer(serializers.ModelSerializer):
             attrs["town"] = None
             if not attrs.get("city", getattr(self.instance, "city", "")).strip():
                 raise serializers.ValidationError({"city": "Enter a city or town for this location."})
+        attrs["landmark"] = attrs.get("landmark", getattr(self.instance, "landmark", "")).strip()
+        if category and category.slug == "jobs":
+            if not attrs.get("job_type", getattr(self.instance, "job_type", "")):
+                raise serializers.ValidationError({"job_type": "Choose the type of job."})
+            if not attrs.get("pay_period", getattr(self.instance, "pay_period", "")):
+                attrs["pay_period"] = Advertisement.PayPeriod.MONTH
+            attrs["condition"] = Advertisement.Condition.NEW  # condition means nothing for a job
+        else:
+            attrs["job_type"] = attrs["pay_period"] = attrs["how_to_apply"] = ""
         image_count = len(attrs.get("image_uploads", [])) + (self.instance.images.count() if self.instance else 0)
         if image_count > 10:
             raise serializers.ValidationError({"image_uploads": "An advertisement can have up to 10 images."})

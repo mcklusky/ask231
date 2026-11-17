@@ -3,7 +3,7 @@ import { useTheme } from '@/lib/theme'
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
-/** Small confirmation messages ("Saved to your listings"), themed to match MarketDay. */
+/** Small confirmation messages ("Saved to your listings"), themed to match the site. */
 function Toaster(props: ToasterProps) {
   const { theme } = useTheme()
   return (

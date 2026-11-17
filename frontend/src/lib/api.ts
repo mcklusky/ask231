@@ -1,4 +1,5 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios'
+import { SITE_NAME } from '@/config/site'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api'
 
@@ -13,7 +14,7 @@ export function shareUrlFor(slug: string) {
 }
 export const api = axios.create({ baseURL: API_URL, headers: { 'Content-Type': 'application/json' } })
 export type Tokens = { access: string; refresh: string }
-export type Profile = { id: number; email: string; first_name: string; last_name: string; email_verified: boolean; is_staff: boolean; phone_number: string; country_code: string; county: string; town: string; preferred_currency: 'LRD' | 'USD'; seller_profile: null | { business_name: string; bio: string; is_verified: boolean; verification_requested?: boolean } }
+export type Profile = { id: number; email: string; first_name: string; last_name: string; email_verified: boolean; is_staff: boolean; phone_number: string; country_code: string; county: string; town: string; preferred_currency: 'LRD' | 'USD'; email_on_new_message: boolean; sms_on_new_message: boolean; login_phone: string; phone_verified: boolean; seller_profile: null | { business_name: string; bio: string; is_verified: boolean; verification_requested?: boolean } }
 
 api.interceptors.request.use((config) => {
   const access = localStorage.getItem('marketday.access')
@@ -69,3 +70,22 @@ api.interceptors.response.use(response => response, async error => {
   original.headers.Authorization = `Bearer ${access}`
   return api(original)
 })
+
+/** Phone sign-in: SMS codes for verifying a number and for resetting a password. */
+export const phoneApi = {
+  sendCode: (phone_number?: string) => api.post<{ detail: string; phone?: string }>('/auth/phone/send-code/', phone_number ? { phone_number } : {}),
+  verify: (code: string) => api.post<Profile>('/auth/phone/verify/', { code }),
+  requestReset: (phone_number: string) => api.post<{ detail: string }>('/auth/password-reset/', { phone_number }),
+  confirmReset: (phone_number: string, code: string, new_password: string) => api.post<{ detail: string }>('/auth/password-reset/phone/', { phone_number, code, new_password }),
+}
+
+/** "+231770123456" -> "+231 770 123 456" */
+export function formatPhone(phone: string) {
+  const match = phone.match(/^\+231(\d{3})(\d{3})(\d{3})$/)
+  return match ? `+231 ${match[1]} ${match[2]} ${match[3]}` : phone
+}
+
+/** What to call the member when they have no name: their email or phone. */
+export function accountLabel(profile: Pick<Profile, 'email' | 'login_phone'>) {
+  return profile.email || formatPhone(profile.login_phone) || `${SITE_NAME} member`
+}

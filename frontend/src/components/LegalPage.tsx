@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { FileWarning } from 'lucide-react'
 import PublicHeader from '@/components/PublicHeader'
 import { LEGAL } from '@/lib/legal'
+import { SITE_NAME } from '@/config/site'
 
 export type LegalSection = { id: string; title: string; body: ReactNode }
 
@@ -12,14 +13,14 @@ export default function LegalPage({ title, intro, sections }: { title: string; i
     <div className="min-h-dvh bg-background text-foreground">
       <PublicHeader />
       <main className="mx-auto w-full max-w-5xl px-4 pb-20 pt-8">
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-brand-red">MarketDay Liberia</p>
+        <p className="text-xs font-bold uppercase tracking-[0.15em] text-brand-red">{SITE_NAME}</p>
         <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">Effective {LEGAL.effectiveDate}</p>
 
         {LEGAL.DRAFT && (
           <div role="note" className="mt-5 flex gap-3 rounded-lg border border-amber-500/40 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/50 dark:text-amber-100">
             <FileWarning className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-            <p><b>Draft.</b> This document has not yet been reviewed by a lawyer and may change before MarketDay launches. It is not legal advice.</p>
+            <p><b>Draft.</b> This document has not yet been reviewed by a lawyer and may change before {SITE_NAME} launches. It is not legal advice.</p>
           </div>
         )}
 

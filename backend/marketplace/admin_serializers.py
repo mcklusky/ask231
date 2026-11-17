@@ -10,11 +10,12 @@ User = get_user_model()
 
 class AdminUserSerializer(serializers.ModelSerializer):
     phone_number = serializers.CharField(source="profile.phone_number", read_only=True, default="")
+    login_phone = serializers.CharField(source="phone_number", read_only=True, default="")
     joined_at = serializers.DateTimeField(source="date_joined", read_only=True)
     is_seller = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ["id", "email", "first_name", "last_name", "phone_number", "is_active", "is_staff", "email_verified_at", "is_seller", "joined_at"]
+        fields = ["id", "email", "first_name", "last_name", "phone_number", "login_phone", "is_active", "is_staff", "email_verified_at", "phone_verified_at", "is_seller", "joined_at"]
         read_only_fields = fields
     def get_is_seller(self, obj):
         return bool(obj.seller_flag)

@@ -1,10 +1,11 @@
 import os
 import uuid
+from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import FileExtensionValidator, MinValueValidator
+from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 from django.db.models.signals import pre_delete
@@ -108,12 +109,34 @@ class Advertisement(models.Model):
         EXPIRED = "expired", "Expired"
         SUSPENDED = "suspended", "Suspended"
 
+    class JobType(models.TextChoices):
+        FULL_TIME = "full_time", "Full-time"
+        PART_TIME = "part_time", "Part-time"
+        CONTRACT = "contract", "Contract"
+        TEMPORARY = "temporary", "Temporary or daily work"
+        INTERNSHIP = "internship", "Internship"
+        VOLUNTEER = "volunteer", "Volunteer"
+
+    class PayPeriod(models.TextChoices):
+        MONTH = "month", "per month"
+        WEEK = "week", "per week"
+        DAY = "day", "per day"
+        HOUR = "hour", "per hour"
+        JOB = "job", "for the job"
+
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="advertisements")
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="advertisements")
     subcategory = models.ForeignKey(SubCategory, on_delete=models.PROTECT, related_name="advertisements")
     county = models.ForeignKey(County, on_delete=models.PROTECT, related_name="advertisements", null=True, blank=True)
     town = models.ForeignKey(Town, on_delete=models.PROTECT, related_name="advertisements", null=True, blank=True)
     country = models.CharField(max_length=100, default="Liberia")
+    # Many places have no street address; people find them by landmark ("behind Total station, Red Light").
+    landmark = models.CharField(max_length=120, blank=True)
+    # Jobs category only: the price is the pay.
+    job_type = models.CharField(max_length=12, choices=JobType.choices, blank=True)
+    pay_period = models.CharField(max_length=8, choices=PayPeriod.choices, blank=True)
+    how_to_apply = models.CharField(max_length=500, blank=True)
+    facebook_post_id = models.CharField(max_length=80, blank=True, editable=False, help_text="Set once the ad has been posted to the site's Facebook page.")
     region = models.CharField(max_length=100, blank=True)
     city = models.CharField(max_length=100, blank=True)
     title = models.CharField(max_length=140)
@@ -153,8 +176,46 @@ class Advertisement(models.Model):
         return self.title
 
 
+class BuyerRequest(models.Model):
+    """ "I'm looking for…": a member describes what they need and sellers or service providers reply."""
+    class Status(models.TextChoices):
+        OPEN = "open", "Open"
+        CLOSED = "closed", "Found / closed"
+        HIDDEN = "hidden", "Hidden by staff"
+
+    requester = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="buyer_requests")
+    title = models.CharField(max_length=120)
+    description = models.TextField(max_length=2000, blank=True)
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name="buyer_requests")
+    county = models.ForeignKey(County, on_delete=models.PROTECT, null=True, blank=True, related_name="buyer_requests")
+    town = models.ForeignKey(Town, on_delete=models.PROTECT, null=True, blank=True, related_name="buyer_requests")
+    budget = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal("0.01"))])
+    currency = models.CharField(max_length=3, default="USD")
+    status = models.CharField(max_length=8, choices=Status.choices, default=Status.OPEN, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField(db_index=True)
+
+    LIFETIME_DAYS = 30
+    MAX_OPEN_PER_MEMBER = 10
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(days=self.LIFETIME_DAYS)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Looking for: {self.title}"
+
+
 class Conversation(models.Model):
-    advertisement = models.ForeignKey(Advertisement, on_delete=models.CASCADE, related_name="conversations")
+    # A chat is about either a listing (buyer -> seller) or a "looking for" request
+    # (buyer = the person asking, seller = the person offering).
+    advertisement = models.ForeignKey(Advertisement, on_delete=models.CASCADE, related_name="conversations", null=True, blank=True)
+    request = models.ForeignKey(BuyerRequest, on_delete=models.CASCADE, related_name="conversations", null=True, blank=True)
     buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="buyer_conversations")
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="seller_conversations")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -162,10 +223,20 @@ class Conversation(models.Model):
 
     class Meta:
         ordering = ["-updated_at"]
-        constraints = [models.UniqueConstraint(fields=["advertisement", "buyer"], name="unique_ad_buyer_conversation")]
+        constraints = [
+            models.UniqueConstraint(fields=["advertisement", "buyer"], name="unique_ad_buyer_conversation"),
+            models.UniqueConstraint(fields=["request", "seller"], name="unique_request_responder_conversation"),
+            models.CheckConstraint(condition=models.Q(advertisement__isnull=False) | models.Q(request__isnull=False), name="conversation_has_subject"),
+        ]
+
+    @property
+    def subject_title(self):
+        if self.advertisement_id:
+            return self.advertisement.title
+        return f"Looking for: {self.request.title}" if self.request_id else "Conversation"
 
     def __str__(self):
-        return f"{self.advertisement.title}: {self.buyer_id} ↔ {self.seller_id}"
+        return f"{self.subject_title}: {self.buyer_id} ↔ {self.seller_id}"
 
 
 class Favorite(models.Model):
@@ -298,3 +369,23 @@ class Promotion(models.Model):
 
     def __str__(self):
         return f"{self.get_kind_display()} - {self.advertisement.title}"
+
+
+class Review(models.Model):
+    """A buyer's rating of a seller, left from a real conversation where the seller replied."""
+    conversation = models.OneToOneField(Conversation, on_delete=models.CASCADE, related_name="review")
+    reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reviews_written")
+    seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reviews_received")
+    advertisement = models.ForeignKey(Advertisement, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviews")
+    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comment = models.TextField(max_length=1000, blank=True)
+    is_hidden = models.BooleanField(default=False, help_text="Hidden by staff (abusive or fake). Hidden reviews do not count.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["seller", "is_hidden"], name="review_seller_visible_idx")]
+
+    def __str__(self):
+        return f"{self.rating}★ for user {self.seller_id}"

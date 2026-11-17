@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, SESSION_EXPIRED_EVENT, type Profile, type Tokens } from './api'
+import { clearSavedData } from './pwa'
 
-type AuthContextValue = { profile: Profile | null; ready: boolean; setProfile: (profile: Profile | null) => void; login: (email: string, password: string) => Promise<void>; logout: () => Promise<void> }
+type AuthContextValue = { profile: Profile | null; ready: boolean; setProfile: (profile: Profile | null) => void; login: (identifier: string, password: string) => Promise<void>; logout: () => Promise<void> }
 const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -22,8 +23,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
   const value = useMemo<AuthContextValue>(() => ({
     profile, ready, setProfile,
-    async login(email, password) {
-      const { data } = await api.post<Tokens>('/auth/token/', { email, password })
+    async login(identifier, password) {
+      // The sign-in field is called "email" by the API but accepts an email address or a phone number.
+      const { data } = await api.post<Tokens>('/auth/token/', { email: identifier.trim(), password })
       localStorage.setItem('marketday.access', data.access)
       localStorage.setItem('marketday.refresh', data.refresh)
       const result = await api.get<Profile>('/auth/profile/')
@@ -33,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const refresh = localStorage.getItem('marketday.refresh')
       try { if (refresh) await api.post('/auth/logout/', { refresh }) } finally {
         localStorage.removeItem('marketday.access'); localStorage.removeItem('marketday.refresh'); setProfile(null)
+        void clearSavedData()
       }
     },
   }), [profile, ready])

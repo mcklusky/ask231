@@ -6,7 +6,7 @@ import PhoneNumberField from '../components/PhoneNumberField'
 import MarketLayout from '../components/MarketLayout'
 import VerifyEmailNotice from '../components/VerifyEmailNotice'
 import { api } from '../lib/api'
-import { type Advertisement, type Category, type County, type Town, marketplaceApi } from '../lib/marketplace'
+import { type Advertisement, type Category, type County, type Town, type JobType, type PayPeriod, isJobsCategory, jobTypeLabels, marketplaceApi, payPeriodLabels } from '../lib/marketplace'
 import { messageFromError } from '../utils/errors'
 import { cn } from '@/lib/utils'
 import { Alert } from '@/components/ui/alert'
@@ -16,9 +16,10 @@ import { Card } from '@/components/ui/card'
 import { Combobox } from '@/components/ui/combobox'
 import { Label, Textarea } from '@/components/ui/input'
 import { Segmented } from '@/components/ui/segmented'
+import { COUNTRY_ADJECTIVE, COUNTRY_NAME, LOCAL_CURRENCY, LOCAL_CURRENCY_SYMBOL } from '@/config/site'
 
-type FormState = { title: string; description: string; price: string; currency: string; condition: 'new' | 'used'; phone_number: string; whatsapp_number: string; country: string; region: string; city: string; category_id: string; subcategory_id: string; county_id: string; town_id: string }
-const initial: FormState = { title: '', description: '', price: '', currency: 'LRD', condition: 'used', phone_number: '', whatsapp_number: '', country: 'Liberia', region: '', city: '', category_id: '', subcategory_id: '', county_id: '', town_id: '' }
+type FormState = { title: string; description: string; price: string; currency: string; condition: 'new' | 'used'; phone_number: string; whatsapp_number: string; country: string; region: string; city: string; landmark: string; job_type: JobType | ''; pay_period: PayPeriod | ''; how_to_apply: string; category_id: string; subcategory_id: string; county_id: string; town_id: string }
+const initial: FormState = { title: '', description: '', price: '', currency: 'LRD', condition: 'used', phone_number: '', whatsapp_number: '', country: COUNTRY_NAME, region: '', city: '', landmark: '', job_type: '', pay_period: 'month', how_to_apply: '', category_id: '', subcategory_id: '', county_id: '', town_id: '' }
 const MAX_PHOTOS = 10
 const MAX_BYTES = 5 * 1024 * 1024
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -45,7 +46,7 @@ export default function AdForm() {
   const fileInput = useRef<HTMLInputElement>(null)
   const category = useMemo(() => categories.find(item => String(item.id) === form.category_id), [categories, form.category_id])
   const county = useMemo(() => counties.find(item => String(item.id) === form.county_id), [counties, form.county_id])
-  const inLiberia = form.country.trim().toLowerCase() === 'liberia'
+  const inLiberia = form.country.trim().toLowerCase() === COUNTRY_NAME.toLowerCase()
   const currencyMode = form.currency === 'LRD' || form.currency === 'USD' ? form.currency : 'OTHER'
 
   useEffect(() => {
@@ -58,7 +59,7 @@ export default function AdForm() {
         setCategories(categoryResponse.data.results); setCounties(countyResponse.data.results)
         if (adResponse) {
           const ad = adResponse.data
-          setForm({ title: ad.title, description: ad.description, price: ad.price, currency: ad.currency, condition: ad.condition, phone_number: ad.phone_number, whatsapp_number: ad.whatsapp_number, country: ad.country || 'Liberia', region: ad.region || '', city: ad.city || '', category_id: String(ad.category.id), subcategory_id: String(ad.subcategory.id), county_id: ad.county ? String(ad.county.id) : '', town_id: ad.town ? String(ad.town.id) : '' })
+          setForm({ title: ad.title, description: ad.description, price: ad.price, currency: ad.currency, condition: ad.condition, phone_number: ad.phone_number, whatsapp_number: ad.whatsapp_number, country: ad.country || COUNTRY_NAME, region: ad.region || '', city: ad.city || '', landmark: ad.landmark || '', job_type: ad.job_type || '', pay_period: ad.pay_period || 'month', how_to_apply: ad.how_to_apply || '', category_id: String(ad.category.id), subcategory_id: String(ad.subcategory.id), county_id: ad.county ? String(ad.county.id) : '', town_id: ad.town ? String(ad.town.id) : '' })
           setExisting(ad.images)
         }
       } catch (e) { if (mounted) setError(messageFromError(e, 'Could not load the form. Sign in and try again.')) }
@@ -98,9 +99,11 @@ export default function AdForm() {
   }
   function onDrop(event: DragEvent<HTMLLabelElement>) { event.preventDefault(); setDragging(false); addFiles(event.dataTransfer.files) }
 
+  const isJob = isJobsCategory(category)
   const missing = [
     !form.category_id && 'category',
     !form.subcategory_id && 'subcategory',
+    isJob && !form.job_type && 'job type',
     inLiberia && !form.county_id && 'county',
     inLiberia && !form.town_id && 'town',
     !form.phone_number.trim() && 'phone number',
@@ -146,23 +149,40 @@ export default function AdForm() {
           </div>
         </Step>
 
-        <Step number="2" title="Price and condition" description="Pick the currency buyers will pay in.">
+        <Step number="2" title={isJob ? 'Job details and pay' : 'Price and condition'} description={isJob ? 'Tell people what kind of job it is and what it pays.' : 'Pick the currency buyers will pay in.'}>
+          {isJob && <>
+            <div className="grid gap-2">
+              <Label htmlFor="job_type">Type of job</Label>
+              <Combobox id="job_type" options={(Object.keys(jobTypeLabels) as JobType[]).map(value => ({ value, label: jobTypeLabels[value] }))} value={form.job_type} onChange={value => update('job_type', value as JobType)} placeholder="Choose job type" searchPlaceholder="Search…" invalid={tried && !form.job_type} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="how_to_apply">How to apply (optional)</Label>
+              <Textarea id="how_to_apply" rows={2} maxLength={500} placeholder="Example: Bring your CV to our office on Broad Street, Monday to Friday, 9am to 3pm." value={form.how_to_apply} onChange={e => update('how_to_apply', e.target.value)} />
+            </div>
+          </>}
           <div className="grid gap-2">
             <span className="text-sm font-semibold">Currency</span>
-            <Segmented label="Currency" value={currencyMode} onChange={mode => update('currency', mode === 'OTHER' ? '' : mode)} options={[{ value: 'LRD', label: 'L$ Liberian' }, { value: 'USD', label: 'US$ Dollar' }, { value: 'OTHER', label: 'Other' }]} />
+            <Segmented label="Currency" value={currencyMode} onChange={mode => update('currency', mode === 'OTHER' ? '' : mode)} options={[{ value: LOCAL_CURRENCY, label: `${LOCAL_CURRENCY_SYMBOL} ${COUNTRY_ADJECTIVE}` }, { value: 'USD', label: 'US$ Dollar' }, { value: 'OTHER', label: 'Other' }]} />
           </div>
           <div className={cn('grid gap-4', currencyMode === 'OTHER' && 'sm:grid-cols-[1fr_10rem]')}>
-            <FormField label="Price" name="price" type="number" inputMode="decimal" min="0.01" step="0.01" placeholder="0" prefix={currencyMode === 'LRD' ? 'L$' : currencyMode === 'USD' ? 'US$' : form.currency || '···'} value={form.price} onChange={e => update('price', e.target.value)} required />
+            <FormField label={isJob ? 'Pay' : 'Price'} name="price" type="number" inputMode="decimal" min="0.01" step="0.01" placeholder="0" prefix={currencyMode === 'LRD' ? 'L$' : currencyMode === 'USD' ? 'US$' : form.currency || '···'} value={form.price} onChange={e => update('price', e.target.value)} required />
             {currencyMode === 'OTHER' && <FormField label="Currency code" name="currency" maxLength={3} pattern="[A-Za-z]{3}" placeholder="EUR" value={form.currency} onChange={e => update('currency', e.target.value.toUpperCase())} hint="3 letters, e.g. EUR" required />}
           </div>
+          {isJob ? (
+            <div className="grid gap-2">
+              <span className="text-sm font-semibold">Pay is</span>
+              <Segmented label="Pay period" value={form.pay_period || 'month'} onChange={value => update('pay_period', value as PayPeriod)} options={(['month', 'week', 'day', 'hour', 'job'] as PayPeriod[]).map(value => ({ value, label: payPeriodLabels[value].replace('per ', '/').replace('for the job', 'job') }))} />
+            </div>
+          ) : (
           <div className="grid gap-2">
             <span className="text-sm font-semibold">Condition</span>
             <Segmented label="Condition" value={form.condition} onChange={value => update('condition', value as FormState['condition'])} options={[{ value: 'new', label: 'New' }, { value: 'used', label: 'Used' }]} />
           </div>
+          )}
         </Step>
 
         <Step number="3" title="Where can buyers find you?" description="Location and contact numbers are shown on your ad.">
-          <FormField label="Country" name="country" autoComplete="country-name" placeholder="Liberia" value={form.country} onChange={e => { update('country', e.target.value); update('county_id', ''); update('town_id', '') }} required />
+          <FormField label="Country" name="country" autoComplete="country-name" placeholder={COUNTRY_NAME} value={form.country} onChange={e => { update('country', e.target.value); update('county_id', ''); update('town_id', '') }} required />
           {inLiberia ? (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2"><Label htmlFor="county_id">County</Label>
@@ -178,6 +198,7 @@ export default function AdForm() {
               <FormField label="State, province, or region" name="region" placeholder="Optional" value={form.region} onChange={e => update('region', e.target.value)} />
             </div>
           )}
+          <FormField label="Landmark or area (optional)" name="landmark" maxLength={120} placeholder="Example: Behind Total station, Red Light" value={form.landmark} onChange={e => update('landmark', e.target.value)} hint="Helps buyers find you when there is no street address." />
           <PhoneNumberField label="Phone number" name="phone_number" value={form.phone_number} onChange={value => update('phone_number', value)} required />
           <div className="grid gap-1.5">
             <PhoneNumberField label="WhatsApp number (optional)" name="whatsapp_number" value={form.whatsapp_number} onChange={value => update('whatsapp_number', value)} />

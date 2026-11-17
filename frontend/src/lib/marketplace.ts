@@ -1,5 +1,6 @@
 import { api } from './api'
 import type { AxiosResponse } from 'axios'
+import { COUNTRY_NAME, LOCAL_CURRENCY, LOCAL_CURRENCY_SYMBOL } from '@/config/site'
 
 export type SubCategory = { id: number; name: string; slug: string; is_active: boolean; sort_order: number; ad_count?: number }
 export type Category = { id: number; name: string; slug: string; description: string; icon: string; is_active: boolean; sort_order: number; subcategories: SubCategory[]; ad_count?: number }
@@ -19,15 +20,21 @@ export type Town = { id: number; name: string; slug: string; county: number; cou
 export type AdImage = { id: number; image_url: string; thumbnail_url: string; width: number | null; height: number | null; alt_text: string; sort_order: number; created_at: string }
 export type Advertisement = {
   id: number; slug: string; title: string; description: string; price: string; currency: string; condition: 'new' | 'used'; status: 'pending' | 'active' | 'rejected' | 'sold' | 'expired' | 'suspended'; rejection_reason: string; phone_number: string; whatsapp_number: string; views_count: number;
-  country: string; region: string; city: string; category: Category; subcategory: SubCategory; county: County | null; town: Town | null; images: AdImage[]; seller_name: string; seller_verified: boolean; created_at: string; updated_at: string; expires_at: string | null;
+  country: string; region: string; city: string; landmark?: string; job_type?: JobType | ''; pay_period?: PayPeriod | ''; how_to_apply?: string; category: Category; subcategory: SubCategory; county: County | null; town: Town | null; images: AdImage[]; seller_name: string; seller_verified: boolean; seller_phone_verified?: boolean; created_at: string; updated_at: string; expires_at: string | null;
 }
+export type JobType = 'full_time' | 'part_time' | 'contract' | 'temporary' | 'internship' | 'volunteer'
+export type PayPeriod = 'month' | 'week' | 'day' | 'hour' | 'job'
+export const jobTypeLabels: Record<JobType, string> = { full_time: 'Full-time', part_time: 'Part-time', contract: 'Contract', temporary: 'Temporary or daily work', internship: 'Internship', volunteer: 'Volunteer' }
+export const payPeriodLabels: Record<PayPeriod, string> = { month: 'per month', week: 'per week', day: 'per day', hour: 'per hour', job: 'for the job' }
+export const isJobsCategory = (category?: { slug: string } | null) => category?.slug === 'jobs'
+
 export function formatLocation(ad: Pick<Advertisement, 'country' | 'region' | 'city' | 'county' | 'town'>) {
   // "Liberia" is implied on a Liberian marketplace; foreign listings keep their country.
-  const parts = ad.country.toLowerCase() === 'liberia' ? [ad.town?.name, ad.county?.name] : [ad.city || ad.town?.name, ad.region || ad.county?.name, ad.country]
+  const parts = ad.country.toLowerCase() === COUNTRY_NAME.toLowerCase() ? [ad.town?.name, ad.county?.name] : [ad.city || ad.town?.name, ad.region || ad.county?.name, ad.country]
   return parts.filter(Boolean).join(', ') || ad.country
 }
 // Both Liberian and US dollars circulate, so a bare "$" is ambiguous: always say L$ or US$.
-const currencyPrefixes: Record<string, string> = { LRD: 'L$', USD: 'US$' }
+const currencyPrefixes: Record<string, string> = { [LOCAL_CURRENCY]: LOCAL_CURRENCY_SYMBOL, USD: 'US$' }
 export function formatCurrencyAmount(amount: number, currency: string) {
   const code = currency.toUpperCase()
   const digits = Number.isInteger(amount) ? 0 : 2

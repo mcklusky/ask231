@@ -1,9 +1,9 @@
-import { BadgeCheck, ShieldCheck, Store } from 'lucide-react'
+import { BadgeCheck, ShieldCheck, Smartphone, Store } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
 /** "Listed by" card plus buyer safety tips, shown under the contact panel. */
-export default function SellerCard({ name, verified, note }: { name: string; verified: boolean; note?: string }) {
+export default function SellerCard({ name, verified, phoneVerified, note }: { name: string; verified: boolean; phoneVerified?: boolean; note?: string }) {
   return (
     <div className="space-y-3">
       <Card className="flex items-center gap-3 p-4">
@@ -11,8 +11,11 @@ export default function SellerCard({ name, verified, note }: { name: string; ver
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Listed by</p>
           <p className="truncate font-semibold text-foreground">{name}</p>
-          {verified
-            ? <Badge variant="default" className="mt-1"><BadgeCheck aria-hidden="true" />Verified seller</Badge>
+          {(verified || phoneVerified)
+            ? <div className="mt-1 flex flex-wrap gap-1.5">
+                {verified && <Badge variant="default"><BadgeCheck aria-hidden="true" />Verified seller</Badge>}
+                {phoneVerified && <Badge variant="success"><Smartphone aria-hidden="true" />Phone verified</Badge>}
+              </div>
             : <span className="text-xs text-muted-foreground">{note || 'Community seller'}</span>}
         </div>
       </Card>

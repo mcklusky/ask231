@@ -6,7 +6,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Advertisement, AdvertisementImage, Category, County, Favorite, Promotion, SubCategory, Town
-from .permissions import HasVerifiedEmail, IsOwnerOrActiveReadOnly, IsStaffOrReadOnly
+from .permissions import HasVerifiedContact, IsOwnerOrActiveReadOnly, IsStaffOrReadOnly
 from .serializers import AdvertisementImageSerializer, AdvertisementSerializer, CategorySerializer, CountySerializer, TownSerializer
 
 
@@ -54,7 +54,7 @@ class AdvertisementListCreateView(generics.ListCreateAPIView):
     parser_classes = [JSONParser, MultiPartParser, FormParser]
     def get_permissions(self):
         if self.request.method == "POST":
-            return [IsOwnerOrActiveReadOnly(), HasVerifiedEmail()]
+            return [IsOwnerOrActiveReadOnly(), HasVerifiedContact()]
         return super().get_permissions()
     def get_queryset(self):
         queryset = Advertisement.objects.select_related("seller", "seller__seller_profile", "category", "subcategory", "county", "town", "town__county").prefetch_related("images").filter(status=Advertisement.Status.ACTIVE)
@@ -66,7 +66,7 @@ class AdvertisementListCreateView(generics.ListCreateAPIView):
             queryset = queryset.filter(subcategory__slug=subcategory, subcategory__is_active=True)
         search = self.request.query_params.get("q", "").strip()
         if search:
-            queryset = queryset.filter(Q(title__icontains=search) | Q(description__icontains=search) | Q(category__name__icontains=search) | Q(subcategory__name__icontains=search) | Q(country__icontains=search) | Q(region__icontains=search) | Q(city__icontains=search) | Q(county__name__icontains=search) | Q(town__name__icontains=search))
+            queryset = queryset.filter(Q(title__icontains=search) | Q(description__icontains=search) | Q(landmark__icontains=search) | Q(category__name__icontains=search) | Q(subcategory__name__icontains=search) | Q(country__icontains=search) | Q(region__icontains=search) | Q(city__icontains=search) | Q(county__name__icontains=search) | Q(town__name__icontains=search))
         country = self.request.query_params.get("country", "").strip()
         if country:
             queryset = queryset.filter(country__iexact=country)

@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, BadgeCheck, CheckCheck, Loader2, MessageCircle, Send, ShieldCheck, Store } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BadgeCheck, CheckCheck, ChevronDown, Loader2, MessageCircle, Send, ShieldCheck, Store, TriangleAlert } from 'lucide-react'
+import { RateSeller } from '@/components/listing/Reviews'
 import { useAuth } from '../lib/auth'
 import { chatApi, type ChatConversation, type ChatMessage } from '../lib/chat'
 import { messageFromError } from '../utils/errors'
@@ -10,6 +11,7 @@ import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/input'
+import { SITE_NAME } from '@/config/site'
 
 const dayKey = (value: string) => new Date(value).toDateString()
 function dayLabel(value: string) {
@@ -25,6 +27,36 @@ function listTime(value: string) {
     ? date.toLocaleTimeString('en-LR', { hour: 'numeric', minute: '2-digit' })
     : date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
+/** Messages that ask for money up front or for a code: the most common scams on classifieds sites. */
+const RISKY = /\b(send|pay|transfer|deposit)\b.{0,40}\b(money|momo|mobile money|orange money|deposit|advance|upfront|up front|fee)\b|\b(verification|security|otp|one[- ]time)\s*code\b|\bwestern union\b|\bmoneygram\b|\bpay(ment)? in advance\b|\bdelivery fee\b/i
+const looksRisky = (text: string) => RISKY.test(text)
+
+function SafetyTips() {
+  const [open, setOpen] = useState(false)
+  return (
+    <li className="mb-2">
+      <div className="rounded-xl border border-primary/20 bg-card text-sm shadow-sm">
+        <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} className="flex w-full items-center gap-2 px-3 py-2.5 text-left font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
+          <ShieldCheck className="size-4 shrink-0 text-primary" aria-hidden="true" />
+          <span className="flex-1">Deal safely: meet in person and pay only when you have the item</span>
+          <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} aria-hidden="true" />
+        </button>
+        {open && (
+          <ul className="list-disc space-y-1 px-3 pb-3 pl-9 text-[13px] leading-relaxed text-muted-foreground">
+            <li>Meet in a busy public place in daylight: a supermarket, bank lobby, filling station or near a police depot.</li>
+            <li>Bring a friend for big items, and tell someone where you are going.</li>
+            <li>Check the item works before you pay. For phones, test calls, charging and the screen.</li>
+            <li>Never send money, mobile money or a &ldquo;delivery fee&rdquo; in advance.</li>
+            <li>Never share a code we text you. {SITE_NAME} staff will never ask for it.</li>
+            <li>Something feels wrong? Use &ldquo;Report&rdquo; on the listing.</li>
+          </ul>
+        )}
+      </div>
+    </li>
+  )
+}
+
+const subjectLink = (conversation: ChatConversation) => conversation.request_id ? `/requests/${conversation.request_id}` : `/ads/${conversation.advertisement_slug}`
 const messageTime = (value: string) => new Date(value).toLocaleTimeString('en-LR', { hour: 'numeric', minute: '2-digit' })
 
 function EmptyThread() {
@@ -169,15 +201,17 @@ export default function Messages() {
                   <span className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-primary"><Store className="size-5" aria-hidden="true" /></span>
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-1 truncate font-semibold">{activeConversation.other_user_name}{activeConversation.other_user_verified && <BadgeCheck className="size-4 shrink-0 text-primary" aria-label="Verified seller" />}</p>
-                    <Link to={`/ads/${activeConversation.advertisement_slug}`} className="block truncate text-xs text-muted-foreground hover:text-primary">About: {activeConversation.listing_title}</Link>
+                    <Link to={subjectLink(activeConversation)} className="block truncate text-xs text-muted-foreground hover:text-primary">About: {activeConversation.listing_title}</Link>
                   </div>
-                  <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex"><Link to={`/ads/${activeConversation.advertisement_slug}`}>View listing<ArrowRight /></Link></Button>
+                  <RateSeller conversationId={activeConversation.id} sellerName={activeConversation.other_user_name} refreshKey={messages.length} />
+                  <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex"><Link to={subjectLink(activeConversation)}>{activeConversation.request_id ? 'View request' : 'View listing'}<ArrowRight /></Link></Button>
                 </header>
                 <div className="flex-1 overflow-y-auto bg-muted/30 px-3 py-4 sm:px-6" aria-live="polite">
                   {loadingMessages ? (
                     <div className="grid h-full place-items-center"><Loader2 className="size-6 animate-spin text-primary" aria-label="Loading messages" /></div>
                   ) : messages.length ? (
                     <ol className="grid gap-2">
+                      <SafetyTips />
                       {messages.map((message, index) => {
                         const newDay = index === 0 || dayKey(messages[index - 1].created_at) !== dayKey(message.created_at)
                         return (
@@ -186,6 +220,12 @@ export default function Messages() {
                             <li className={cn('flex', message.is_mine ? 'justify-end' : 'justify-start')}>
                               <div className={cn('max-w-[82%] rounded-2xl px-3.5 py-2 text-sm shadow-sm sm:max-w-[70%]', message.is_mine ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-card text-card-foreground ring-1 ring-border')}>
                                 <p className="whitespace-pre-wrap break-words leading-relaxed">{message.body}</p>
+                                {!message.is_mine && looksRisky(message.body) && (
+                                  <p className="mt-2 flex gap-1.5 rounded-lg bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-900 ring-1 ring-amber-300 dark:bg-amber-950/60 dark:text-amber-100 dark:ring-amber-700">
+                                    <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden="true" />
+                                    <span>Be careful: never pay or share a code before you have the item in your hands.</span>
+                                  </p>
+                                )}
                                 <p className={cn('mt-1 flex items-center justify-end gap-1 text-[11px]', message.is_mine ? 'text-primary-foreground/75' : 'text-muted-foreground')}>
                                   <time dateTime={message.created_at}>{messageTime(message.created_at)}</time>{message.is_mine && <CheckCheck className="size-3.5" aria-label="Sent" />}
                                 </p>
@@ -210,7 +250,7 @@ export default function Messages() {
                     className="max-h-32 min-h-11 resize-none rounded-2xl py-2.5" />
                   <Button type="submit" size="icon" className="shrink-0 rounded-full" disabled={!draft.trim() || sending} aria-label="Send message">{sending ? <Loader2 className="animate-spin" /> : <Send />}</Button>
                 </form>
-                <p className="flex items-center justify-center gap-1.5 bg-card pb-2 text-[11px] text-muted-foreground"><ShieldCheck className="size-3.5 text-primary" aria-hidden="true" />Keep chats on MarketDay. Never share verification codes or pay in advance.</p>
+                <p className="flex items-center justify-center gap-1.5 bg-card pb-2 text-[11px] text-muted-foreground"><ShieldCheck className="size-3.5 text-primary" aria-hidden="true" />Keep chats on {SITE_NAME}. Never share verification codes or pay in advance.</p>
               </>
             ) : <EmptyThread />}
           </section>

@@ -5,14 +5,16 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { shareUrlFor } from '../lib/api'
 import { chatApi } from '../lib/chat'
-import { formatCurrencyAmount, formatLocation, marketplaceApi, type Advertisement } from '../lib/marketplace'
+import { formatCurrencyAmount, formatLocation, isJobsCategory, jobTypeLabels, marketplaceApi, payPeriodLabels, type Advertisement } from '../lib/marketplace'
 import { messageFromError } from '../utils/errors'
 import { ListingCard, formatPrice } from './Home'
 import ContactPanel from '@/components/listing/ContactPanel'
 import ReportDialog from '@/components/listing/ReportDialog'
 import SellerCard from '@/components/listing/SellerCard'
+import { SellerReviews } from '@/components/listing/Reviews'
 import PublicHeader from '../components/PublicHeader'
 import VerifyEmailNotice from '../components/VerifyEmailNotice'
+import { COUNTRY_ADJECTIVE, SITE_NAME } from '@/config/site'
 
 export default function AdvertisementDetail() {
   const { slug = '' } = useParams()
@@ -92,24 +94,25 @@ export default function AdvertisementDetail() {
   return <div className="public-market"><PublicHeader />
     <main className="detail-main"><div className="browse-crumb"><Link to="/"><ArrowLeft size={14}/> Home</Link><span>/</span><Link to="/listings">Listings</Link><span>/</span><Link to={`/category/${ad.category.slug}`}>{ad.category.name}</Link></div>
       <div className="detail-layout"><section className="detail-primary"><div className="detail-gallery"><div className="detail-main-image">{image ? <img src={image} alt={ad.images[imageIndex]?.alt_text || ad.title}/> : <div className="listing-placeholder large"><Store size={58}/></div>}{ad.images.length > 1 && <><button aria-label="Previous image" onClick={() => setImageIndex(i => (i - 1 + ad.images.length) % ad.images.length)}><ChevronLeft size={20}/></button><button aria-label="Next image" onClick={() => setImageIndex(i => (i + 1) % ad.images.length)}><ChevronRight size={20}/></button><span>{imageIndex + 1} / {ad.images.length}</span></>}</div>{ad.images.length > 1 && <div className="detail-thumbnails">{ad.images.map((item, index) => <button key={item.id} className={index === imageIndex ? 'selected' : ''} onClick={() => setImageIndex(index)}><img src={item.thumbnail_url || item.image_url} loading="lazy" decoding="async" alt={item.alt_text || `${ad.title} ${index + 1}`}/></button>)}</div>}</div>
-        <div className="detail-description"><div className="detail-section-heading"><h2>Description</h2><span><Eye size={14}/> {ad.views_count.toLocaleString()} views</span></div><p>{ad.description}</p><div className="detail-facts"><div><small>Condition</small><b>{ad.condition === 'new' ? 'New' : 'Used'}</b></div><div><small>Category</small><b>{ad.category.name} · {ad.subcategory.name}</b></div><div><small>Location</small><b>{formatLocation(ad)}</b></div><div><small>Posted</small><b>{new Date(ad.created_at).toLocaleDateString('en-LR', { day: 'numeric', month: 'short', year: 'numeric' })}</b></div></div></div>
+        <div className="detail-description"><div className="detail-section-heading"><h2>Description</h2><span><Eye size={14}/> {ad.views_count.toLocaleString()} views</span></div><p>{ad.description}</p>{isJobsCategory(ad.category) && ad.how_to_apply && <div className="mt-4 rounded-lg border border-primary/20 bg-secondary/60 p-3"><b className="text-sm">How to apply</b><p className="mt-1 text-sm">{ad.how_to_apply}</p></div>}<div className="detail-facts">{isJobsCategory(ad.category) ? <><div><small>Job type</small><b>{ad.job_type ? jobTypeLabels[ad.job_type] : 'Not stated'}</b></div><div><small>Pay</small><b>{formatPrice(ad)} {ad.pay_period ? payPeriodLabels[ad.pay_period] : ''}</b></div></> : <div><small>Condition</small><b>{ad.condition === 'new' ? 'New' : 'Used'}</b></div>}<div><small>Category</small><b>{ad.category.name} · {ad.subcategory.name}</b></div><div><small>Location</small><b>{formatLocation(ad)}</b></div>{ad.landmark && <div><small>Landmark</small><b>{ad.landmark} <a className="ml-1 whitespace-nowrap text-sm font-semibold text-primary underline underline-offset-2 dark:text-brand-blue" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([ad.landmark, ad.town?.name, ad.county?.name, ad.country].filter(Boolean).join(', '))}`} target="_blank" rel="noopener noreferrer">Open in Maps</a></b></div>}<div><small>Posted</small><b>{new Date(ad.created_at).toLocaleDateString('en-LR', { day: 'numeric', month: 'short', year: 'numeric' })}</b></div></div></div>
       </section>
         <aside className="detail-sidebar space-y-3 max-[767px]:mb-3">
           <ContactPanel
             title={ad.title} priceLabel={formatPrice(ad)} priceAmount={Number(ad.price)} currency={ad.currency}
-            location={formatLocation(ad)} conditionLabel={ad.condition === 'new' ? 'New' : 'Pre-owned'}
+            location={formatLocation(ad)} conditionLabel={isJobsCategory(ad.category) ? (ad.job_type ? jobTypeLabels[ad.job_type] : 'Job') : ad.condition === 'new' ? 'New' : 'Pre-owned'} isJob={isJobsCategory(ad.category)}
             saved={saved} busy={startingChat} error={chatError}
             onToggleSave={() => void toggleFavorite()} onMessageSeller={() => void messageSeller()}
             onSendMessage={sendMessage} onSendOffer={sendOffer}
             callHref={`tel:${phone}`}
-            whatsappHref={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Hello, I saw your listing for ${ad.title} on MarketDay.`)}`}
+            whatsappHref={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Hello, I saw your listing for ${ad.title} on ${SITE_NAME}.`)}`}
             notice={<VerifyEmailNotice action="message this seller" />}
             report={<ReportDialog slug={ad.slug} />}
             shareUrl={shareUrlFor(ad.slug)}
           />
-          <SellerCard name={ad.seller_name || 'MarketDay seller'} verified={ad.seller_verified} />
+          <SellerCard name={ad.seller_name || `${SITE_NAME} seller`} verified={ad.seller_verified} phoneVerified={ad.seller_phone_verified} />
+          <SellerReviews slug={ad.slug} />
         </aside>
         </div>
       {similar.length > 0 && <section className="public-section similar-section"><div className="public-section-heading"><div><span className="public-eyebrow">MORE TO EXPLORE</span><h2>Similar listings</h2></div><Link to={`/category/${ad.category.slug}`}>More in {ad.category.name} <ChevronRight size={15}/></Link></div><div className="listing-grid">{similar.map(item => <ListingCard key={item.id} ad={item}/>)}</div></section>}
-    </main><footer className="public-footer"><div className="public-footer-bottom"><Link to="/">MarketDay Liberia</Link><span>Local finds. Liberian pride.</span></div></footer></div>
+    </main><footer className="public-footer"><div className="public-footer-bottom"><Link to="/">{SITE_NAME}</Link><span>Local finds. {COUNTRY_ADJECTIVE} pride.</span></div></footer></div>
 }

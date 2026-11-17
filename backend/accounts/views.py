@@ -13,8 +13,10 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .models import SellerProfile, UserProfile
-from .serializers import EmailTokenSerializer, PasswordResetConfirmSerializer, PasswordResetRequestSerializer, ProfileSerializer, RegistrationSerializer
+from rest_framework.exceptions import Throttled, ValidationError
+from .models import PhoneCode, SellerProfile, UserProfile
+from .phone import check_code, issue_code, mask_phone, normalize_phone
+from .serializers import EmailTokenSerializer, PasswordResetConfirmSerializer, PasswordResetRequestSerializer, PhonePasswordResetSerializer, PhoneSendCodeSerializer, PhoneVerifySerializer, ProfileSerializer, RegistrationSerializer, format_phone, release_unverified_phone
 
 User = get_user_model()
 class AuthThrottle(AnonRateThrottle):
@@ -31,9 +33,13 @@ class RegisterView(generics.CreateAPIView):
     throttle_classes = [AuthThrottle]
     def perform_create(self, serializer):
         user = serializer.save()
-        token = signing.dumps({"user_id": user.pk}, salt="email-verification")
-        link = f"{settings.FRONTEND_URL}/verify-email?token={token}"
-        send_mail("Verify your Liberia Buy & Sell email", f"Verify your email address: {link}", settings.DEFAULT_FROM_EMAIL, [user.email])
+        if user.email:
+            send_verification_email(user)
+        if user.phone_number:
+            try:
+                issue_code(user.phone_number, PhoneCode.Purpose.VERIFY, user)
+            except (Throttled, ValidationError):
+                pass  # the account still exists; they can ask for a new code after signing in
 class ProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -57,12 +63,89 @@ class LogoutView(APIView):
         except (TokenError, AttributeError):
             return Response({"detail": "A valid refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_204_NO_CONTENT)
+def send_verification_email(user):
+    token = signing.dumps({"user_id": user.pk}, salt="email-verification")
+    link = f"{settings.FRONTEND_URL}/verify-email?token={token}"
+    send_mail(f"Verify your {settings.SITE_NAME} email", f"Verify your email address: {link}", settings.DEFAULT_FROM_EMAIL, [user.email])
+
+
+class PhoneSendCodeView(APIView):
+    """Text a code to the member's phone. Sending a different number starts a change of number."""
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [VerificationEmailThrottle]
+    def post(self, request):
+        serializer = PhoneSendCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        raw = serializer.validated_data.get("phone_number", "").strip()
+        target = normalize_phone(raw) if raw else user.phone_number
+        if not target:
+            return Response({"phone_number": ["Enter your phone number."]}, status=status.HTTP_400_BAD_REQUEST)
+        if target == user.phone_number and user.phone_verified_at:
+            return Response({"detail": "Your phone number is already verified."})
+        if User.objects.filter(phone_number=target, phone_verified_at__isnull=False).exclude(pk=user.pk).exists():
+            return Response({"phone_number": ["Another account already uses this phone number."]}, status=status.HTTP_400_BAD_REQUEST)
+        # The member's sign-in number only changes once the code for the new number is confirmed.
+        issue_code(target, PhoneCode.Purpose.VERIFY, user)
+        return Response({"detail": f"We texted a 6-digit code to {mask_phone(target)}.", "phone": target})
+
+
+class PhoneVerifyView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [AuthThrottle]
+    def post(self, request):
+        serializer = PhoneVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        entry = PhoneCode.objects.filter(user=user, purpose=PhoneCode.Purpose.VERIFY, used_at__isnull=True).order_by("-created_at").first()
+        phone = entry.phone if entry else None
+        if not phone or not check_code(phone, PhoneCode.Purpose.VERIFY, serializer.validated_data["code"]):
+            return Response({"code": ["That code is wrong or has expired. Ask for a new one."]}, status=status.HTTP_400_BAD_REQUEST)
+        if User.objects.filter(phone_number=phone, phone_verified_at__isnull=False).exclude(pk=user.pk).exists():
+            return Response({"code": ["Another account verified this number first."]}, status=status.HTTP_400_BAD_REQUEST)
+        release_unverified_phone(phone, keep_user=user)
+        user.phone_number, user.phone_verified_at = phone, timezone.now()
+        user.save(update_fields=["phone_number", "phone_verified_at"])
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        if not profile.phone_number:
+            profile.phone_number = format_phone(phone)
+            profile.save(update_fields=["phone_number", "updated_at"])
+        user.profile = profile
+        return Response(ProfileSerializer(user).data)
+
+
+class PhonePasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [AuthThrottle]
+    def post(self, request):
+        serializer = PhonePasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        phone = serializer.validated_data["phone_number"]
+        user = User.objects.filter(phone_number=phone, is_active=True).first()
+        if not user or not check_code(phone, PhoneCode.Purpose.RESET, serializer.validated_data["code"]):
+            return Response({"code": ["That code is wrong or has expired. Ask for a new one."]}, status=status.HTTP_400_BAD_REQUEST)
+        user.set_password(serializer.validated_data["new_password"])
+        user.phone_verified_at = user.phone_verified_at or timezone.now()  # receiving the code proves they hold this phone
+        user.save(update_fields=["password", "phone_verified_at"])
+        return Response({"detail": "Password updated. You can now sign in."})
+
+
 class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AuthThrottle]
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        phone = serializer.validated_data.get("phone_number")
+        if phone:
+            user = User.objects.filter(phone_number=phone, is_active=True).first()
+            if user:
+                try:
+                    issue_code(phone, PhoneCode.Purpose.RESET, user)
+                except ValidationError:
+                    pass
+            # Same answer whether or not the number has an account, so numbers can't be probed.
+            return Response({"detail": "If an account uses that number, we have texted it a 6-digit code."})
         user = User.objects.filter(email__iexact=serializer.validated_data["email"], is_active=True).first()
         if user:
             uid = urlsafe_base64_encode(force_bytes(user.pk))
@@ -92,9 +175,9 @@ class VerifyEmailView(APIView):
     def post(self, request):
         if request.user.email_verified_at:
             return Response({"detail": "Your email address is already verified."})
-        token = signing.dumps({"user_id": request.user.pk}, salt="email-verification")
-        link = f"{settings.FRONTEND_URL}/verify-email?token={token}"
-        send_mail("Verify your Liberia Buy & Sell email", f"Verify your email address: {link}", settings.DEFAULT_FROM_EMAIL, [request.user.email])
+        if not request.user.email:
+            return Response({"detail": "Add an email address first."}, status=status.HTTP_400_BAD_REQUEST)
+        send_verification_email(request.user)
         return Response({"detail": "Verification email sent."})
 class VerifyEmailConfirmView(APIView):
     permission_classes = [permissions.AllowAny]

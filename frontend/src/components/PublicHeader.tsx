@@ -1,15 +1,43 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Heart, LayoutDashboard, List, LogOut, MessageCircle, Moon, Plus, Store, Sun, UserRound } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Download, Heart, Search, LayoutDashboard, List, LogOut, MessageCircle, Moon, Plus, Store, Sun, UserRound } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
+import { accountLabel } from '@/lib/api'
+import { chatApi } from '@/lib/chat'
+import { useInstallAction } from '@/components/InstallApp'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
+import { BrandLockup } from '@/components/Brand'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { SITE_NAME } from '@/config/site'
 
 function initials(first: string, last: string, email: string) {
   const fromName = `${first?.[0] ?? ''}${last?.[0] ?? ''}`.trim()
   return (fromName || email[0] || '?').toUpperCase()
+}
+
+/** Unread messages for the signed-in member. Refreshes on navigation, when the tab regains focus, and every minute. */
+function useUnreadMessages(signedIn: boolean) {
+  const [count, setCount] = useState(0)
+  const { pathname } = useLocation()
+  useEffect(() => {
+    if (!signedIn) { setCount(0); return }
+    let alive = true
+    const load = () => { if (document.visibilityState === 'visible') chatApi.unreadCount().then(({ data }) => { if (alive) setCount(data.count) }).catch(() => undefined) }
+    load()
+    // The inbox polls on its own, so the header only polls elsewhere.
+    const timer = pathname.startsWith('/messages') ? undefined : window.setInterval(load, 60000)
+    document.addEventListener('visibilitychange', load)
+    return () => { alive = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', load) }
+  }, [signedIn, pathname])
+  return count
+}
+
+function UnreadBadge({ count, className }: { count: number; className?: string }) {
+  if (!count) return null
+  return <span aria-hidden="true" className={cn('grid h-5 min-w-5 place-items-center rounded-full bg-brand-red px-1 text-[11px] font-bold leading-none text-white ring-2 ring-primary dark:ring-card', className)}>{count > 99 ? '99+' : count}</span>
 }
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -22,21 +50,22 @@ export default function PublicHeader() {
   const navigate = useNavigate()
   const sellTo = profile ? '/ads/new' : '/register'
   const ThemeIcon = theme === 'dark' ? Sun : Moon
+  const unread = useUnreadMessages(Boolean(profile))
+  const installApp = useInstallAction()
+  const messagesLabel = unread ? `Messages, ${unread} unread` : 'Messages'
 
   return (
     <header className="sticky top-0 z-40 border-b-[3px] border-brand-red bg-primary text-white shadow-sm dark:bg-card">
       <div className="mx-auto flex h-16 w-full max-w-[1160px] items-center gap-2 px-4 sm:gap-4">
-        <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="MarketDay Liberia home">
+        <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={`${SITE_NAME} home`}>
           <span className="grid size-9 place-items-center rounded-xl bg-brand-red text-white shadow-sm ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
-          <span className="font-display leading-none">
-            <span className="block text-[19px] font-extrabold tracking-tight">marketday</span>
-            <span className="mt-0.5 block text-[10px] font-bold tracking-[0.2em] text-white/75 max-[359px]:hidden">LIBERIA</span>
-          </span>
+          <BrandLockup onBlue hideCountryOnTiny />
         </Link>
 
         <nav aria-label="Main" className="ml-2 hidden items-center gap-1 md:flex">
           <NavLink to="/listings" className={navLinkClass}>Buy smarter</NavLink>
           <NavLink to={sellTo} className={navLinkClass}>Sell faster</NavLink>
+          <NavLink to="/requests" className={navLinkClass}>Wanted</NavLink>
         </nav>
 
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
@@ -46,27 +75,30 @@ export default function PublicHeader() {
 
           {profile ? (
             <>
-              <Button asChild variant="on-brand" size="icon" className="hidden sm:inline-flex" aria-label="Messages" title="Messages">
-                <Link to="/messages"><MessageCircle /></Link>
+              <Button asChild variant="on-brand" size="icon" className="relative hidden sm:inline-flex" aria-label={messagesLabel} title={messagesLabel}>
+                <Link to="/messages"><MessageCircle /><UnreadBadge count={unread} className="absolute -right-1 -top-1" /></Link>
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary" aria-label="Open account menu">
+                  <button className="relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary" aria-label={unread ? `Open account menu, ${unread} unread messages` : 'Open account menu'}>
                     <Avatar className="size-10 ring-2 ring-white/70">
-                      <AvatarFallback className="bg-white text-primary">{initials(profile.first_name, profile.last_name, profile.email)}</AvatarFallback>
+                      <AvatarFallback className="bg-white text-primary">{initials(profile.first_name, profile.last_name, accountLabel(profile))}</AvatarFallback>
                     </Avatar>
+                    <UnreadBadge count={unread} className="absolute -right-1 -top-1 sm:hidden" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64">
                   <DropdownMenuLabel>
                     <span className="block truncate font-semibold">{[profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'My account'}</span>
-                    <span className="block truncate text-xs font-normal text-muted-foreground">{profile.email}</span>
+                    <span className="block truncate text-xs font-normal text-muted-foreground">{accountLabel(profile)}</span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild><Link to="/account"><UserRound /> My account</Link></DropdownMenuItem>
                   <DropdownMenuItem asChild><Link to="/my-ads"><List /> My ads</Link></DropdownMenuItem>
                   <DropdownMenuItem asChild><Link to="/favorites"><Heart /> Saved listings</Link></DropdownMenuItem>
-                  <DropdownMenuItem asChild><Link to="/messages"><MessageCircle /> Messages</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link to="/requests?tab=mine"><Search /> My requests</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link to="/messages"><MessageCircle /> Messages{unread > 0 && <span className="ml-auto rounded-full bg-brand-red px-1.5 text-[11px] font-bold text-white">{unread > 99 ? '99+' : unread}<span className="sr-only"> unread</span></span>}</Link></DropdownMenuItem>
+                  {installApp.canInstall && <DropdownMenuItem onSelect={() => void installApp.start()}><Download /> Install the app</DropdownMenuItem>}
                   {profile.is_staff && <DropdownMenuItem asChild><Link to="/admin"><LayoutDashboard /> Staff dashboard</Link></DropdownMenuItem>}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={async () => { await logout(); navigate('/') }} className="text-brand-red focus:bg-brand-red/10 focus:text-brand-red [&_svg]:text-brand-red">
@@ -86,6 +118,7 @@ export default function PublicHeader() {
           </Button>
         </div>
       </div>
+      {installApp.dialog}
     </header>
   )
 }

@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 import dj_database_url
@@ -75,6 +76,29 @@ if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend":
     EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in {"true", "1", "yes", "on"}
     EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
     EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+# ---------------------------------------------------------------------------
+# Country and brand. The site name is the brand word plus the country calling code
+# (Ask + 231 = Ask231). To launch in another country, change these values
+# (e.g. COUNTRY_CALLING_CODE=233, COUNTRY_NAME=Ghana, DEFAULT_CURRENCY=GHS) and load that country's regions.
+COUNTRY_CALLING_CODE = os.getenv("COUNTRY_CALLING_CODE", "231")
+COUNTRY_NAME = os.getenv("COUNTRY_NAME", "Liberia")
+DEFAULT_CURRENCY = os.getenv("DEFAULT_CURRENCY", "LRD")
+BRAND_WORD = os.getenv("BRAND_WORD", "Ask")
+SITE_NAME = os.getenv("SITE_NAME", f"{BRAND_WORD}{COUNTRY_CALLING_CODE}")
+# ---------------------------------------------------------------------------
+
+# Text messages: "console" prints them (development); "twilio" sends them. See accounts/sms.py.
+SMS_BACKEND = os.getenv("SMS_BACKEND", "console")
+if len(sys.argv) > 1 and sys.argv[1] == "test":
+    SMS_BACKEND = "locmem"  # tests read texts from accounts.sms.outbox
+SMS_FROM = os.getenv("SMS_FROM", "")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
+# Post newly approved ads to the brand's Facebook page (off until both are set). See marketplace/facebook.py.
+FACEBOOK_PAGE_ID = os.getenv("FACEBOOK_PAGE_ID", "")
+FACEBOOK_PAGE_TOKEN = os.getenv("FACEBOOK_PAGE_TOKEN", "")
+# Public site address used in shared links (defaults to FRONTEND_URL; same site in production).
+SHARE_BASE_URL = os.getenv("SHARE_BASE_URL", "")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:5173")
 CORS_ALLOWED_ORIGINS = [x.strip() for x in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if x.strip()]
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if x.strip()]

@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input, Label, Textarea } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { SITE_NAME } from '@/config/site'
 
 const QUICK_MESSAGES = ['Is this still available?', 'What’s your last price?', 'Where can we meet?']
+const JOB_QUICK_MESSAGES = ['Is this job still open?', 'What are the working hours?', 'How do I apply?']
 
 export type ContactPanelProps = {
   title: string
@@ -19,6 +21,8 @@ export type ContactPanelProps = {
   currency: string
   location: string
   conditionLabel: string
+  /** Job ads: talk about the employer, and no price offers. */
+  isJob?: boolean
   saved: boolean
   busy?: boolean
   error?: string
@@ -42,7 +46,7 @@ export type ContactPanelProps = {
 
 async function shareListing(title: string, url: string) {
   try {
-    if (navigator.share) { await navigator.share({ title, text: `${title} on MarketDay`, url }); return }
+    if (navigator.share) { await navigator.share({ title, text: `${title} on ${SITE_NAME}`, url }); return }
     await navigator.clipboard.writeText(url)
     toast.success('Link copied', { description: 'Paste it into WhatsApp, SMS or anywhere you like.' })
   } catch (error) {
@@ -91,7 +95,7 @@ export default function ContactPanel(props: ContactPanelProps) {
 
         {props.notice}
 
-        <Button className="w-full" size="lg" onClick={props.onMessageSeller} disabled={busy}><MessageCircle />{busy ? 'Opening chat…' : 'Message seller'}</Button>
+        <Button className="w-full" size="lg" onClick={props.onMessageSeller} disabled={busy}><MessageCircle />{busy ? 'Opening chat…' : props.isJob ? 'Message employer' : 'Message seller'}</Button>
         <div className="grid grid-cols-2 gap-2">
           {props.callHref
             ? <Button asChild variant="cta"><a href={props.callHref}><Phone />Call</a></Button>
@@ -100,12 +104,12 @@ export default function ContactPanel(props: ContactPanelProps) {
             ? <Button asChild variant="whatsapp"><a href={props.whatsappHref} target="_blank" rel="noreferrer"><MessageCircle />WhatsApp</a></Button>
             : <Button variant="whatsapp" onClick={props.onWhatsApp}><MessageCircle />WhatsApp</Button>}
         </div>
-        <Button variant="outline-red" className="w-full" onClick={() => setOfferOpen(true)}><HandCoins />Make an offer</Button>
+        {!props.isJob && <Button variant="outline-red" className="w-full" onClick={() => setOfferOpen(true)}><HandCoins />Make an offer</Button>}
 
         <form onSubmit={submitMessage} className="space-y-2.5 border-t pt-4">
-          <Label htmlFor="quick-message">Send the seller a message</Label>
+          <Label htmlFor="quick-message">{props.isJob ? 'Ask the employer a question' : 'Send the seller a message'}</Label>
           <div className="flex flex-wrap gap-1.5" aria-label="Quick messages">
-            {QUICK_MESSAGES.map(text => (
+            {(props.isJob ? JOB_QUICK_MESSAGES : QUICK_MESSAGES).map(text => (
               <button key={text} type="button" onClick={() => setDraft(text)}
                 className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', draft === text ? 'border-primary bg-secondary text-primary' : 'border-border text-muted-foreground')}>
                 {text}

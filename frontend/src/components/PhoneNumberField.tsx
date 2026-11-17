@@ -1,3 +1,4 @@
+import { COUNTRY_ISO } from '@/config/site'
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Input, Label } from '@/components/ui/input'
@@ -23,7 +24,7 @@ type Props = { label: string; name: string; value: string; onChange: (value: str
 
 /** Phone number with a searchable country-code picker (Liberia +231 by default). Emits "+231 770 123 456". */
 export default function PhoneNumberField({ label, name, value, onChange, hint, required, autoComplete = 'tel', placeholder = 'Phone number' }: Props) {
-  const [country, setCountry] = useState<string>(() => countryFromNumber(value) || (value.startsWith('+') ? 'other' : 'LR'))
+  const [country, setCountry] = useState<string>(() => countryFromNumber(value) || (value.startsWith('+') ? 'other' : COUNTRY_ISO))
   const [customCode, setCustomCode] = useState(() => value.match(/^\+(\d{1,4})/)?.[1] || '')
   useEffect(() => {
     if (!value.startsWith('+')) return

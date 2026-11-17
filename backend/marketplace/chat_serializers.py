@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import serializers
 
 from .models import Conversation, Message
@@ -8,12 +9,13 @@ def public_name(user):
     if profile and profile.business_name:
         return profile.business_name
     name = f"{user.first_name} {user.last_name}".strip()
-    return name or "MarketDay member"
+    return name or f"{settings.SITE_NAME} member"
 
 
 class ConversationSerializer(serializers.ModelSerializer):
-    advertisement_slug = serializers.CharField(source="advertisement.slug", read_only=True)
-    listing_title = serializers.CharField(source="advertisement.title", read_only=True)
+    advertisement_slug = serializers.CharField(source="advertisement.slug", read_only=True, default=None)
+    request_id = serializers.IntegerField(read_only=True, default=None)
+    listing_title = serializers.CharField(source="subject_title", read_only=True)
     listing_image_url = serializers.SerializerMethodField()
     other_user_name = serializers.SerializerMethodField()
     other_user_verified = serializers.SerializerMethodField()
@@ -22,7 +24,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ["id", "advertisement_slug", "listing_title", "listing_image_url", "other_user_name", "other_user_verified", "last_message", "unread_count", "updated_at"]
+        fields = ["id", "advertisement_slug", "request_id", "listing_title", "listing_image_url", "other_user_name", "other_user_verified", "last_message", "unread_count", "updated_at"]
 
     def get_other_user(self, obj):
         user = self.context["request"].user
@@ -36,7 +38,7 @@ class ConversationSerializer(serializers.ModelSerializer):
         return bool(profile and profile.is_verified)
 
     def get_listing_image_url(self, obj):
-        image = obj.advertisement.images.first()
+        image = obj.advertisement.images.first() if obj.advertisement_id else None
         if not image:
             return None
         try:

@@ -2,7 +2,8 @@ import { api } from './api'
 
 export type ChatConversation = {
   id: number
-  advertisement_slug: string
+  advertisement_slug: string | null
+  request_id: number | null
   listing_title: string
   listing_image_url: string | null
   other_user_name: string
@@ -22,6 +23,7 @@ export type ChatMessage = {
 }
 
 export const chatApi = {
+  unreadCount: () => api.get<{ count: number }>('/market/messages/unread-count/'),
   conversations: () => api.get<ChatConversation[]>('/market/messages/conversations/'),
   start: (advertisementSlug: string) => api.post<ChatConversation>('/market/messages/conversations/', { advertisement_slug: advertisementSlug }),
   messages: (conversationId: number) => api.get<ChatMessage[]>(`/market/messages/conversations/${conversationId}/messages/`),

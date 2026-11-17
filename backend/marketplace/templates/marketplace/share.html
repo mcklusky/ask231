@@ -8,7 +8,7 @@
   <meta name="robots" content="noindex">
   <link rel="canonical" href="{{ share_url }}">
   {# Open Graph: WhatsApp, Facebook, LinkedIn, Telegram, iMessage #}
-  <meta property="og:site_name" content="MarketDay Liberia">
+  <meta property="og:site_name" content="{{ site_name }}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="{{ share_url }}">
   <meta property="og:title" content="{{ title }}">
@@ -28,7 +28,7 @@
   <style>body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;color:#202b38}a{color:#1857a6}</style>
 </head>
 <body>
-  <p>Opening <a href="{{ target }}">{{ title }}</a> on MarketDay…</p>
+  <p>Opening <a href="{{ target }}">{{ title }}</a> on {{ site_name }}…</p>
   {{ target|json_script:"share-target" }}
   <script>window.location.replace(JSON.parse(document.getElementById("share-target").textContent));</script>
 </body>

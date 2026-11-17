@@ -38,14 +38,14 @@ def listing_share(request, slug):
     frontend = settings.FRONTEND_URL.rstrip("/")
     share_url = request.build_absolute_uri()
     # Branded 1200x630 card (frontend/public/og-default.png) for ads without photos.
-    default_image = {"url": f"{frontend}/og-default.png", "width": 1200, "height": 630, "alt": "MarketDay Liberia — buy and sell across all 15 counties"}
+    default_image = {"url": f"{frontend}/og-default.png", "width": 1200, "height": 630, "alt": f"{settings.SITE_NAME}: buy, sell and ask for anything in {settings.COUNTRY_NAME}"}
     ad = (Advertisement.objects.filter(slug=slug, status=Advertisement.Status.ACTIVE)
           .select_related("county", "town", "category").prefetch_related("images").first())
     if ad is None:
         # Unknown, pending, sold or removed ads: generic preview, no details leaked.
         return render(request, "marketplace/share.html", {
-            "title": "MarketDay Liberia — Buy & Sell", "description": "This listing is no longer available. Find similar items across Liberia.",
-            "target": f"{frontend}/listings", "share_url": share_url, "image": default_image,
+            "title": f"{settings.SITE_NAME}: Buy & Sell", "description": f"This listing is no longer available. Find similar items across {settings.COUNTRY_NAME}.",
+            "target": f"{frontend}/listings", "share_url": share_url, "site_name": settings.SITE_NAME, "image": default_image,
         }, status=404)
 
     photo = ad.images.first()
@@ -65,7 +65,7 @@ def listing_share(request, slug):
         "title": f"{_money(ad)} · {ad.title}",
         "description": f"{summary} — {Truncator(' '.join(ad.description.split())).chars(150)}",
         "target": f"{frontend}/ads/{ad.slug}",
-        "share_url": share_url,
+        "share_url": share_url, "site_name": settings.SITE_NAME,
         "image": image,
     })
 

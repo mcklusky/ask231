@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Advertisement, AdvertisementImage, Category, County, Promotion, Report, SubCategory, Town
+from . import facebook
+from .models import Advertisement, AdvertisementImage, Category, County, BuyerRequest, Promotion, Report, Review, SubCategory, Town
 
 class SubCategoryInline(admin.TabularInline):
     model = SubCategory
@@ -66,7 +67,9 @@ class AdvertisementImageInline(admin.TabularInline):
 
 @admin.action(description="Approve selected advertisements")
 def approve_advertisements(modeladmin, request, queryset):
+    newly_active = list(queryset.exclude(status=Advertisement.Status.ACTIVE))
     queryset.update(status=Advertisement.Status.ACTIVE, rejection_reason="")
+    facebook.announce_approved(newly_active)
 
 @admin.action(description="Reject selected advertisements")
 def reject_advertisements(modeladmin, request, queryset):
@@ -104,3 +107,30 @@ class PromotionAdmin(admin.ModelAdmin):
     list_display = ("advertisement", "kind", "status", "starts_at", "ends_at", "created_by")
     list_filter = ("kind", "status")
     search_fields = ("advertisement__title",)
+
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ("seller", "rating", "reviewer", "advertisement", "is_hidden", "created_at")
+    list_filter = ("is_hidden", "rating")
+    search_fields = ("seller__email", "seller__phone_number", "reviewer__email", "reviewer__phone_number", "comment")
+    raw_id_fields = ("conversation", "reviewer", "seller", "advertisement")
+    actions = ("hide_reviews", "show_reviews")
+    @admin.action(description="Hide selected reviews")
+    def hide_reviews(self, request, queryset):
+        queryset.update(is_hidden=True)
+    @admin.action(description="Show selected reviews")
+    def show_reviews(self, request, queryset):
+        queryset.update(is_hidden=False)
+
+
+@admin.register(BuyerRequest)
+class BuyerRequestAdmin(admin.ModelAdmin):
+    list_display = ("title", "requester", "category", "county", "status", "created_at", "expires_at")
+    list_filter = ("status", "category", "county")
+    search_fields = ("title", "description", "requester__email", "requester__phone_number")
+    raw_id_fields = ("requester",)
+    actions = ("hide_requests",)
+    @admin.action(description="Hide selected requests (spam or not allowed)")
+    def hide_requests(self, request, queryset):
+        queryset.update(status=BuyerRequest.Status.HIDDEN)

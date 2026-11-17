@@ -16,6 +16,8 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { usePromptDialog } from '@/components/ui/prompt-dialog'
+import { COUNTRY_NAME, SITE_NAME } from '@/config/site'
+import { BrandLockup } from '@/components/Brand'
 
 type Tab = 'overview' | 'users' | 'sellers' | 'ads' | 'categories' | 'locations' | 'reports' | 'promotions'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,7 +33,7 @@ const endpoints: Partial<Record<Tab, string>> = { users: '/admin/users/', seller
 const titleCase = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase())
 const fmtDate = (value?: string) => value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
 const toLocalInput = (iso: string) => { const d = new Date(iso); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) }
-const sectionDescription: Record<Tab, string> = { overview: 'Monitor activity and handle work that needs attention.', users: 'Review member accounts and control access.', sellers: 'Manage seller profiles and verification badges.', ads: 'Review, approve, reject, or suspend advertisements.', categories: 'Maintain the categories sellers use for listings.', locations: 'Manage the Liberia counties and their towns.', reports: 'Review user-submitted reports and record outcomes.', promotions: 'Schedule listing placements without processing payments.' }
+const sectionDescription: Record<Tab, string> = { overview: 'Monitor activity and handle work that needs attention.', users: 'Review member accounts and control access.', sellers: 'Manage seller profiles and verification badges.', ads: 'Review, approve, reject, or suspend advertisements.', categories: 'Maintain the categories sellers use for listings.', locations: `Manage the ${COUNTRY_NAME} counties and their towns.`, reports: 'Review user-submitted reports and record outcomes.', promotions: 'Schedule listing placements without processing payments.' }
 
 const STATUS_VARIANT: Record<string, BadgeProps['variant']> = {
   active: 'success', verified: 'success', resolved: 'success',
@@ -315,7 +317,7 @@ export default function AdminDashboard() {
 
   function renderSection(): ReactNode {
     if (tab === 'users') return <DataTable rows={rows} empty="New accounts will appear here." columns={[
-      { key: 'email', label: 'Account', render: row => <PrimaryCell title={row.email} subtitle={[row.first_name, row.last_name].filter(Boolean).join(' ') || 'Name not provided'} /> },
+      { key: 'email', label: 'Account', render: row => <PrimaryCell title={row.email || row.login_phone || 'No contact'} subtitle={[row.first_name, row.last_name].filter(Boolean).join(' ') || 'Name not provided'} /> },
       { key: 'phone_number', label: 'Phone' }, { key: 'joined_at', label: 'Joined', render: row => fmtDate(row.joined_at) },
       { key: 'is_active', label: 'Status', render: row => <StatusPill value={row.is_active ? 'active' : 'suspended'} /> },
       { key: 'action', label: 'Actions', render: row => rowButton(row.is_active ? 'Suspend' : 'Reactivate', () => void setUserActive(row), row.is_active) },
@@ -419,9 +421,9 @@ export default function AdminDashboard() {
     <div className="min-h-dvh bg-muted/40 text-foreground lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
       {/* Sidebar (desktop) */}
       <aside className="hidden border-r-[3px] border-brand-red bg-primary text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col dark:bg-card">
-        <Link to="/" className="flex items-center gap-2.5 px-5 py-5" aria-label="MarketDay Liberia home">
+        <Link to="/" className="flex items-center gap-2.5 px-5 py-5" aria-label={`${SITE_NAME} home`}>
           <span className="grid size-9 place-items-center rounded-xl bg-brand-red ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
-          <span className="font-display leading-none"><span className="block text-[19px] font-extrabold">marketday</span><span className="mt-0.5 block text-[10px] font-bold tracking-[0.2em] text-white/75">LIBERIA</span></span>
+          <BrandLockup onBlue />
         </Link>
         <p className="px-5 pb-2 text-[11px] font-bold uppercase tracking-[0.15em] text-white/60">Administration</p>
         <nav aria-label="Admin sections" className="grid gap-0.5 px-3">
@@ -449,7 +451,7 @@ export default function AdminDashboard() {
         {/* Top bar */}
         <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur">
           <div className="flex h-14 items-center gap-2 px-4 sm:px-6">
-            <Link to="/" className="mr-1 grid size-8 place-items-center rounded-lg bg-brand-red text-white lg:hidden" aria-label="MarketDay home"><Store className="size-4" aria-hidden="true" /></Link>
+            <Link to="/" className="mr-1 grid size-8 place-items-center rounded-lg bg-brand-red text-white lg:hidden" aria-label={`${SITE_NAME} home`}><Store className="size-4" aria-hidden="true" /></Link>
             <p className="flex min-w-0 items-center gap-1.5 text-sm"><span className="text-muted-foreground">Admin</span><ChevronRight className="size-3.5 text-muted-foreground" aria-hidden="true" /><b className="truncate">{current.label}</b></p>
             <div className="ml-auto flex items-center gap-1">
               <Button variant="ghost" size="icon-sm" onClick={toggleTheme} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}><ThemeIcon /></Button>
@@ -472,7 +474,7 @@ export default function AdminDashboard() {
         <main className="mx-auto max-w-6xl p-4 sm:p-6">
           <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-brand-red">MarketDay Liberia</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-brand-red">{SITE_NAME}</p>
               <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">{tab === 'overview' ? 'Marketplace overview' : current.label}</h1>
               <p className="text-sm text-muted-foreground">{sectionDescription[tab]}</p>
             </div>

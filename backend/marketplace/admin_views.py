@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from accounts.models import SellerProfile
 from .admin_serializers import AdminAdvertisementSerializer, AdminCategorySerializer, AdminCountySerializer, AdminPromotionSerializer, AdminReportSerializer, AdminSellerSerializer, AdminSubCategorySerializer, AdminTownSerializer, AdminUserSerializer, ReportCreateSerializer
 from .models import Advertisement, Category, County, Promotion, Report, SubCategory, Town
+from . import facebook
 
 User = get_user_model()
 
@@ -48,7 +49,7 @@ class AdminUserViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [StaffOnly]
     serializer_class = AdminUserSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["email", "first_name", "last_name"]
+    search_fields = ["email", "phone_number", "first_name", "last_name"]
     ordering_fields = ["date_joined", "email"]
     def get_queryset(self):
         queryset = User.objects.filter(is_staff=False, is_superuser=False).select_related("profile").annotate(seller_flag=Count("seller_profile"))
@@ -114,9 +115,12 @@ class AdminAdvertisementViewSet(viewsets.ReadOnlyModelViewSet):
         reason = str(request.data.get("rejection_reason", ""))[:240]
         if new_status in (Advertisement.Status.REJECTED, Advertisement.Status.SUSPENDED) and not reason.strip():
             raise ValidationError({"rejection_reason": "Add a short reason for this moderation action."})
+        was_active = ad.status == Advertisement.Status.ACTIVE
         ad.status = new_status
         ad.rejection_reason = reason if new_status in (Advertisement.Status.REJECTED, Advertisement.Status.SUSPENDED) else ""
         ad.save(update_fields=["status", "rejection_reason", "updated_at"])
+        if new_status == Advertisement.Status.ACTIVE and not was_active:
+            facebook.announce_approved([ad])
         return response.Response(self.get_serializer(ad).data)
 
 class AdminCategoryViewSet(viewsets.ModelViewSet):

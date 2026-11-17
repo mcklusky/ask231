@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import PublicHeader from '@/components/PublicHeader'
+import { SocialLinks } from '@/components/SocialLinks'
+import { SITE_NAME } from '@/config/site'
 
 /** Seller pages (post/edit ad, my ads, saved listings): the public header plus a page heading. */
 export default function MarketLayout({ children, title, subtitle, eyebrow = 'Seller centre' }: { children: ReactNode; title: string; subtitle: string; eyebrow?: string }) {
@@ -15,7 +17,7 @@ export default function MarketLayout({ children, title, subtitle, eyebrow = 'Sel
         </div>
         <div className="market-content-legacy">{children}</div>
       </main>
-      <footer className="border-t py-6 text-center text-xs text-muted-foreground"><Link to="/" className="font-semibold text-foreground hover:text-primary">MarketDay Liberia</Link> · Made for local trade</footer>
+      <footer className="grid justify-items-center gap-3 border-t py-6 text-center text-xs text-muted-foreground"><SocialLinks /><Link to="/" className="font-semibold text-foreground hover:text-primary">{SITE_NAME}</Link> · Made for local trade</footer>
     </div>
   )
 }

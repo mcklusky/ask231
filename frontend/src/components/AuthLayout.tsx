@@ -4,15 +4,14 @@ import { ArrowLeft, BadgeCheck, MapPin, Moon, ShieldCheck, Store, Sun } from 'lu
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/lib/theme'
 import { Button } from '@/components/ui/button'
+import { COUNTRY_NAME, SITE_NAME } from '@/config/site'
+import { BrandLockup } from '@/components/Brand'
 
 function Logo({ onBlue = false }: { onBlue?: boolean }) {
   return (
-    <Link to="/" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="MarketDay Liberia home">
+    <Link to="/" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`${SITE_NAME} home`}>
       <span className="grid size-9 place-items-center rounded-xl bg-brand-red text-white shadow-sm ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
-      <span className="font-display leading-none">
-        <span className={cn('block text-[19px] font-extrabold tracking-tight', onBlue ? 'text-white' : 'text-foreground')}>marketday</span>
-        <span className={cn('mt-0.5 block text-[10px] font-bold tracking-[0.2em]', onBlue ? 'text-white/75' : 'text-muted-foreground')}>LIBERIA</span>
-      </span>
+      <BrandLockup onBlue={onBlue} />
     </Link>
   )
 }
@@ -35,7 +34,7 @@ export default function AuthLayout({ children, title, subtitle, wide = false }: 
           style={{ backgroundImage: 'repeating-linear-gradient(180deg, #c92f42 0 26px, #ffffff 26px 52px)', maskImage: 'linear-gradient(115deg, transparent 35%, #000 100%)', WebkitMaskImage: 'linear-gradient(115deg, transparent 35%, #000 100%)' }} />
         <div className="relative"><Logo onBlue /></div>
         <div className="relative max-w-md">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold tracking-wide ring-1 ring-white/20"><LoneStar className="size-3.5 text-white" />LIBERIA’S LOCAL MARKETPLACE</span>
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold tracking-wide ring-1 ring-white/20"><LoneStar className="size-3.5 text-white" />{COUNTRY_NAME.toUpperCase()}’S LOCAL MARKETPLACE</span>
           <h2 className="mt-6 font-display text-5xl font-extrabold leading-[1.05] tracking-tight">Good things are closer than you think.</h2>
           <p className="mt-4 text-base leading-relaxed text-white/80">Find what you need and meet the people behind it. A simpler way to buy and sell across all 15 counties.</p>
           <ul className="mt-8 grid gap-4">
@@ -52,7 +51,7 @@ export default function AuthLayout({ children, title, subtitle, wide = false }: 
           </ul>
         </div>
         <LoneStar className="pointer-events-none absolute -bottom-16 -right-16 size-80 text-white/[0.07]" />
-        <p className="relative text-xs text-white/60">© {new Date().getFullYear()} MarketDay Liberia · Made for Liberia</p>
+        <p className="relative text-xs text-white/60">© {new Date().getFullYear()} {SITE_NAME} · Made for {COUNTRY_NAME}</p>
       </aside>
 
       {/* Form side */}

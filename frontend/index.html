@@ -1,16 +1,17 @@
 <!doctype html>
 <html lang="en">
+  <!-- %SITE_NAME%, %COUNTRY_NAME% etc. are filled in from the country settings by vite.config.ts -->
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1857a6" />
-    <meta name="description" content="Buy and sell across all 15 counties of Liberia: phones, cars, homes, fashion, jobs and services." />
-    <title>MarketDay Liberia — Buy & Sell</title>
+    <meta name="description" content="%SITE_TAGLINE%" />
+    <title>%SITE_NAME%: Buy, Sell & Ask</title>
     <!-- Link previews (WhatsApp, Facebook, X). Ads get their own previews from the backend at /s/<slug>/. -->
-    <meta property="og:site_name" content="MarketDay Liberia" />
+    <meta property="og:site_name" content="%SITE_NAME%" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="MarketDay Liberia — Buy & Sell" />
-    <meta property="og:description" content="Buy and sell across all 15 counties of Liberia: phones, cars, homes, fashion, jobs and services." />
+    <meta property="og:title" content="%SITE_NAME%: Buy, Sell & Ask" />
+    <meta property="og:description" content="%SITE_TAGLINE%" />
     <meta property="og:url" content="%VITE_SITE_URL%/" />
     <meta property="og:image" content="%VITE_SITE_URL%/og-default.png" />
     <meta property="og:image:width" content="1200" />
@@ -18,6 +19,13 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="%VITE_SITE_URL%/og-default.png" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Installable app: "Add to home screen" on Android and iPhone, no app store needed -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="%SITE_NAME%" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />

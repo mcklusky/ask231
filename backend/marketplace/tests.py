@@ -269,6 +269,83 @@ class VerificationAndReportingTests(TestCase):
         self.assertEqual(len(mail.outbox), 5)  # already verified: no email sent
 
 
+class NewMessageNotificationTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        self.seller = User.objects.create_user(email="seller@marketday.test", password="StrongPass!2026", first_name="Comfort", last_name="Kollie", email_verified_at=dj_timezone.now())
+        self.buyer = User.objects.create_user(email="buyer@marketday.test", password="StrongPass!2026", first_name="Musu", last_name="Toe", email_verified_at=dj_timezone.now())
+        category = Category.objects.get(name="Vehicles")
+        county = County.objects.get(slug="montserrado")
+        self.ad = Advertisement.objects.create(
+            seller=self.seller, status=Advertisement.Status.ACTIVE, category=category,
+            subcategory=SubCategory.objects.get(category=category, name="Cars"), county=county,
+            town=Town.objects.get(county=county, slug="monrovia"), title="Toyota Hilux", description="Good condition pickup.",
+            price="9000.00", currency="USD", condition="used", phone_number="+231 770 123 456",
+        )
+        self.conversation = Conversation.objects.create(advertisement=self.ad, buyer=self.buyer, seller=self.seller)
+        self.url = f"/api/market/messages/conversations/{self.conversation.id}/messages/"
+
+    def tearDown(self):
+        cache.clear()
+
+    def send(self, user, body):
+        self.client.force_authenticate(user)
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(self.url, {"body": body}, format="json")
+        self.assertEqual(response.status_code, 201, response.data)
+
+    def test_recipient_gets_one_email_per_unread_batch(self):
+        from django.core import mail
+        self.send(self.buyer, "Is the Hilux still available?")
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.to, ["seller@marketday.test"])
+        self.assertIn("Musu Toe", email.subject)
+        self.assertIn("Toyota Hilux", email.subject)
+        self.assertIn("Is the Hilux still available?", email.body)
+        self.assertIn(f"/messages/{self.conversation.id}", email.body)
+
+        self.send(self.buyer, "I can come today.")
+        self.assertEqual(len(mail.outbox), 1)  # seller has not read the first one yet
+
+        self.client.force_authenticate(self.seller)
+        self.client.get(self.url)  # seller opens the chat
+        self.send(self.buyer, "Hello again")
+        self.assertEqual(len(mail.outbox), 2)
+
+        self.send(self.seller, "Yes, come by at 3pm.")
+        self.assertEqual(len(mail.outbox), 3)
+        self.assertEqual(mail.outbox[2].to, ["buyer@marketday.test"])
+
+    def test_members_can_turn_message_emails_off(self):
+        from django.core import mail
+        self.client.force_authenticate(self.seller)
+        response = self.client.patch("/api/auth/profile/", {"email_on_new_message": False}, format="json")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(response.data["email_on_new_message"])
+        self.send(self.buyer, "Is the Hilux still available?")
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_email_failure_does_not_block_the_message(self):
+        from unittest import mock
+        with mock.patch("marketplace.notifications.send_mail", side_effect=OSError("SMTP down")), self.assertLogs("marketplace.notifications", level="ERROR"):
+            self.send(self.buyer, "Is the Hilux still available?")
+        self.assertEqual(Message.objects.count(), 1)
+
+    def test_unread_count_for_header_badge(self):
+        self.send(self.buyer, "First")
+        self.send(self.buyer, "Second")
+        self.client.force_authenticate(self.seller)
+        self.assertEqual(self.client.get("/api/market/messages/unread-count/").data, {"count": 2})
+        self.client.get(self.url)
+        self.assertEqual(self.client.get("/api/market/messages/unread-count/").data, {"count": 0})
+        self.client.force_authenticate(self.buyer)
+        self.assertEqual(self.client.get("/api/market/messages/unread-count/").data, {"count": 0})
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get("/api/market/messages/unread-count/").status_code, 401)
+
+
 class ListingPhotoOptimisationTests(TestCase):
     """Uploaded photos are resized to WebP, get a thumbnail, are upright, and lose all metadata."""
 

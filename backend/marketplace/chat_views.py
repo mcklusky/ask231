@@ -7,14 +7,15 @@ from rest_framework.views import APIView
 
 from .chat_serializers import ConversationSerializer, MessageCreateSerializer, MessageSerializer
 from .models import Advertisement, Conversation, Message
-from .permissions import HasVerifiedEmail
+from .notifications import notify_new_message
+from .permissions import HasVerifiedContact
 
 
 class VerifiedToWriteMixin:
     """Anyone signed in can read their inbox; sending requires a verified email."""
     def get_permissions(self):
         if self.request.method == "POST":
-            return [permissions.IsAuthenticated(), HasVerifiedEmail()]
+            return [permissions.IsAuthenticated(), HasVerifiedContact()]
         return [permissions.IsAuthenticated()]
 
 
@@ -23,7 +24,7 @@ class ConversationListCreateView(VerifiedToWriteMixin, APIView):
 
     def get(self, request):
         conversations = Conversation.objects.filter(Q(buyer=request.user) | Q(seller=request.user)).select_related(
-            "advertisement", "buyer", "seller", "buyer__seller_profile", "seller__seller_profile"
+            "advertisement", "request", "buyer", "seller", "buyer__seller_profile", "seller__seller_profile"
         ).prefetch_related("advertisement__images")
         data = ConversationSerializer(conversations, many=True, context={"request": request}).data
         return Response(data)
@@ -49,7 +50,7 @@ class ConversationMessagesView(VerifiedToWriteMixin, APIView):
 
     def get_conversation(self, request, conversation_id):
         return get_object_or_404(
-            Conversation.objects.select_related("advertisement", "buyer", "seller"),
+            Conversation.objects.select_related("advertisement", "request", "buyer", "seller"),
             Q(pk=conversation_id) & (Q(buyer=request.user) | Q(seller=request.user)),
         )
 
@@ -65,4 +66,17 @@ class ConversationMessagesView(VerifiedToWriteMixin, APIView):
         serializer.is_valid(raise_exception=True)
         message = Message.objects.create(conversation=conversation, sender=request.user, body=serializer.validated_data["body"])
         conversation.save(update_fields=["updated_at"])
+        notify_new_message(message)
         return Response(MessageSerializer(message, context={"request": request}).data, status=status.HTTP_201_CREATED)
+
+
+class UnreadMessageCountView(APIView):
+    """How many messages are waiting for the signed-in member (for the header badge)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        count = Message.objects.filter(
+            Q(conversation__buyer=request.user) | Q(conversation__seller=request.user),
+            read_at__isnull=True,
+        ).exclude(sender=request.user).count()
+        return Response({"count": count})
