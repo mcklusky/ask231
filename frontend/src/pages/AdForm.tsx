@@ -142,7 +142,7 @@ export default function AdForm() {
           <div className="grid gap-2">
             <Label htmlFor="description">Description</Label>
             <Textarea id="description" maxLength={10000} rows={6} placeholder="Condition, size, age, what’s included, and anything buyers should know." value={form.description} onChange={e => update('description', e.target.value)} required />
-            <p className="flex justify-between gap-3 text-xs text-muted-foreground"><span>Be clear and honest. Never include bank or mobile money details.</span><span className="shrink-0">{form.description.length}/10,000</span></p>
+            <p className="flex justify-between gap-3 text-xs text-muted-foreground"><span>Be clear and honest. Never include bank or mobile money details. <Link to="/terms#prohibited" target="_blank" className="font-medium text-primary underline underline-offset-2 dark:text-brand-blue">Listing rules</Link></span><span className="shrink-0">{form.description.length}/10,000</span></p>
           </div>
         </Step>
 

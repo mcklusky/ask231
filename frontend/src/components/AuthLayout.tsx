@@ -72,7 +72,7 @@ export default function AuthLayout({ children, title, subtitle, wide = false }: 
             </div>
             {children}
             <p className="mt-8 flex items-center justify-center gap-1.5 text-xs text-muted-foreground"><ShieldCheck className="size-3.5 text-primary" aria-hidden="true" />Your information is protected and secure</p>
-            <p className="mt-2 text-center text-xs text-muted-foreground">By continuing, you agree to our <a href="#terms" className="underline underline-offset-2 hover:text-foreground">Terms</a> and <a href="#privacy" className="underline underline-offset-2 hover:text-foreground">Privacy Policy</a>.</p>
+            <p className="mt-2 text-center text-xs text-muted-foreground">By continuing, you agree to our <Link to="/terms" className="underline underline-offset-2 hover:text-foreground">Terms of Use</Link> and <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">Privacy Policy</Link>.</p>
           </div>
         </main>
       </div>
