@@ -6,6 +6,19 @@ import { ListingCard } from './Home'
 import { liberianCounties, marketplaceApi, type Advertisement, type Category, type County } from '../lib/marketplace'
 import { messageFromError } from '../utils/errors'
 import PublicHeader from '../components/PublicHeader'
+import { cn } from '@/lib/utils'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input, Label } from '@/components/ui/input'
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+
+function Segmented({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) {
+  return <div role="radiogroup" aria-label={label} className="grid gap-1 rounded-lg bg-muted p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+    {options.map(option => <button key={option.value || 'any'} type="button" role="radio" aria-checked={value === option.value} onClick={() => onChange(option.value)}
+      className={cn('h-9 rounded-md text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', value === option.value ? 'bg-card text-primary shadow-sm dark:text-brand-blue' : 'text-muted-foreground hover:text-foreground')}>{option.label}</button>)}
+  </div>
+}
 
 export default function Listings() {
   const { slug } = useParams()
@@ -41,6 +54,33 @@ export default function Listings() {
   }
   const sortLabels: Record<string, string> = { '-created_at': 'Newest first', created_at: 'Oldest first', price: 'Price: low to high', '-price': 'Price: high to low' }
   const activeCounty = counties.find(place => place.slug === countySlug)
+  function renderFilterFields(prefix: string) {
+    const set = (key: keyof typeof filters) => (value: string) => setFilters(f => ({ ...f, [key]: value }))
+    const currencyOptions = [{ value: '', label: 'Any' }, { value: 'LRD', label: 'L$' }, { value: 'USD', label: 'US$' }]
+    if (filters.currency && !currencyOptions.some(o => o.value === filters.currency)) currencyOptions.push({ value: filters.currency, label: filters.currency })
+    return <div className="grid gap-4">
+      <div className="grid gap-2"><Label htmlFor={`${prefix}-sort`}>Sort by</Label>
+        <select id={`${prefix}-sort`} value={filters.ordering} onChange={e => set('ordering')(e.target.value)} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30">
+          <option value="-created_at">Newest first</option><option value="created_at">Oldest first</option><option value="price">Price: low to high</option><option value="-price">Price: high to low</option>
+        </select>
+      </div>
+      <div className="grid gap-2"><span className="text-sm font-semibold">Condition</span>
+        <Segmented label="Condition" value={filters.condition} onChange={set('condition')} options={[{ value: '', label: 'Any' }, { value: 'new', label: 'New' }, { value: 'used', label: 'Used' }]} />
+      </div>
+      <div className="grid gap-2"><span className="text-sm font-semibold">Currency</span>
+        <Segmented label="Currency" value={filters.currency} onChange={set('currency')} options={currencyOptions} />
+      </div>
+      <fieldset className="grid gap-2"><legend className="mb-2 text-sm font-semibold">Price range</legend>
+        <div className="flex items-center gap-2">
+          <Input aria-label="Minimum price" type="number" min="0" inputMode="numeric" placeholder="Min" value={filters.min_price} onChange={e => set('min_price')(e.target.value)} />
+          <span className="text-muted-foreground" aria-hidden="true">–</span>
+          <Input aria-label="Maximum price" type="number" min="0" inputMode="numeric" placeholder="Max" value={filters.max_price} onChange={e => set('max_price')(e.target.value)} />
+        </div>
+      </fieldset>
+      <div className="grid gap-2"><Label htmlFor={`${prefix}-town`}>Town or city</Label><Input id={`${prefix}-town`} placeholder="Any town or city" value={filters.town} onChange={e => set('town')(e.target.value)} /></div>
+      <div className="grid gap-2"><Label htmlFor={`${prefix}-country`}>Country</Label><Input id={`${prefix}-country`} placeholder="Any country" value={filters.country} onChange={e => set('country')(e.target.value)} /></div>
+    </div>
+  }
   return <div className="public-market browse-market"><PublicHeader /><main className="browse-main"><div className="browse-crumb"><Link to="/"><ArrowLeft size={14} /> Home</Link><span>/</span>{category ? <><Link to="/listings">Listings</Link><span>/</span><b>{category.name}</b></> : <b>All listings</b>}</div>
     <form className="marketplace-search browse-search" onSubmit={submitSearch}>
       <div className="listing-search-row">
@@ -50,13 +90,31 @@ export default function Listings() {
       <label className="browse-location-row"><MapPin size={16} aria-hidden="true"/><span>Location</span><select aria-label="Choose a county" value={countyInput} onChange={event => {setCountyInput(event.target.value);setFilters(f=>({...f,town:''}))}}><option value="">Any location</option>{counties.map(place => <option value={place.slug} key={place.id}>{place.name}</option>)}</select></label>
 
     </form>
-    <div className="browse-heading"><div><span className="public-eyebrow">MARKETDAY · LIBERIA</span><h1>{query ? `Results for “${query}”` : category?.name || 'Explore local listings'}</h1><p>{activeCounty ? `Available in ${activeCounty.name}, Liberia.` : category?.description || 'Browse products from Liberia and sellers abroad.'}</p></div><span className="browse-sort">{sortLabels[filters.ordering] || 'Newest first'}</span></div><div className="browse-content-layout"><aside className={`browse-filter-sidebar${filtersOpen ? ' is-open' : ''}`} aria-label="Refine listings"><button type="button" className="browse-filter-toggle" aria-expanded={filtersOpen} aria-controls="listing-filters" onClick={() => setFiltersOpen(open => !open)}><SlidersHorizontal size={16} aria-hidden="true"/> {filtersOpen ? 'Hide filters' : 'Filters & sort'}{activeFilterCount > 0 && <span className="browse-filter-count">{activeFilterCount}</span>}</button>      <section className="listing-filter-row" id="listing-filters" aria-label="Listing filters">
-        <div className="listing-filter-heading"><span><SlidersHorizontal size={16} aria-hidden="true"/> Refine your search</span><div><small>{activeFilterCount ? `${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'} active` : 'Choose any filters to narrow results'}</small>{activeFilterCount > 0 && <button type="button" className="clear-filters" onClick={clearFilters}>Clear all</button>}</div></div>
-        <label className="listing-filter-field"><span>Country</span><input aria-label="Country" placeholder="Any country" value={filters.country} onChange={e=>setFilters(f=>({...f,country:e.target.value}))} /></label>
-        <label className="listing-filter-field"><span>Town or city</span><input aria-label="Town or city" placeholder="Any town or city" value={filters.town} onChange={e=>setFilters(f=>({...f,town:e.target.value}))} /></label>
-        <label className="listing-filter-field"><span>Condition</span><select aria-label="Condition" value={filters.condition} onChange={e=>setFilters(f=>({...f,condition:e.target.value}))}><option value="">Any condition</option><option value="new">New</option><option value="used">Used</option></select></label>
-        <label className="listing-filter-field"><span>Currency code</span><input aria-label="Currency code" maxLength={3} placeholder="Any currency" value={filters.currency} onChange={e=>setFilters(f=>({...f,currency:e.target.value.toUpperCase()}))} /></label>
-        <fieldset className="listing-price-field"><legend>Price range</legend><div><label><span className="sr-only">Minimum price</span><input aria-label="Minimum price" type="number" min="0" placeholder="Min" value={filters.min_price} onChange={e=>setFilters(f=>({...f,min_price:e.target.value}))}/></label><span aria-hidden="true">–</span><label><span className="sr-only">Maximum price</span><input aria-label="Maximum price" type="number" min="0" placeholder="Max" value={filters.max_price} onChange={e=>setFilters(f=>({...f,max_price:e.target.value}))}/></label></div></fieldset>
-        <label className="listing-filter-field listing-sort-field"><span>Sort by</span><select aria-label="Sort listings" value={filters.ordering} onChange={e=>setFilters(f=>({...f,ordering:e.target.value}))}><option value="-created_at">Newest first</option><option value="created_at">Oldest first</option><option value="price">Price: low to high</option><option value="-price">Price: high to low</option></select></label>
-      </section></aside><section className="browse-results-content"><div className="browse-category-pills"><Link className={!slug ? 'active' : ''} to="/listings">All listings</Link>{category && <Link className={!filters.subcategory ? 'active' : ''} to={`/category/${category.slug}`}>All in {category.name}</Link>}{category?.subcategories.map(s => <Link key={s.id} className={filters.subcategory === s.slug ? 'active' : ''} to={`/category/${category.slug}?subcategory=${encodeURIComponent(s.slug)}`}>{s.name}</Link>)}</div>{error ? <div className="public-error"><b>Could not load listings</b><span>{error}</span><button onClick={() => window.location.reload()}>Try again</button></div> : loading ? <div className="listing-grid">{[1,2,3,4,5,6,7,8].map(n => <div className="listing-skeleton" key={n}><div/><span/><i/></div>)}</div> : ads.length ? <><div className="listing-grid">{ads.map(ad => <ListingCard key={ad.id} ad={ad}/>)}</div><div className="browse-pagination"><button disabled={!hasPrevious} onClick={() => setPage(p => Math.max(1, p - 1))}><ArrowLeft size={14}/> Previous</button><span>Page {page}</span><button disabled={!hasNext} onClick={() => setPage(p => p + 1)}>Next <ArrowRight size={14}/></button></div></> : <div className="public-empty"><Store size={22}/><b>No listings found</b><span>Try a different search or browse another category.</span><Link to="/listings">Browse all listings <ArrowRight size={14}/></Link></div>}</section></div></main><footer className="public-footer"><div className="public-footer-bottom"><Link to="/">MarketDay Liberia</Link><span>Local finds. Liberian pride.</span></div></footer></div>
+    <div className="browse-heading"><div><span className="public-eyebrow">MARKETDAY · LIBERIA</span><h1>{query ? `Results for “${query}”` : category?.name || 'Explore local listings'}</h1><p>{activeCounty ? `Available in ${activeCounty.name}, Liberia.` : category?.description || 'Browse products from Liberia and sellers abroad.'}</p></div><span className="browse-sort">{sortLabels[filters.ordering] || 'Newest first'}</span></div><div className="browse-content-layout"><aside className="browse-filter-sidebar max-[760px]:hidden" aria-label="Refine listings">
+        <Card className="p-4">
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <p className="flex items-center gap-2 font-display text-base font-bold"><SlidersHorizontal className="size-4 text-primary" aria-hidden="true" />Filters{activeFilterCount > 0 && <Badge variant="red">{activeFilterCount}</Badge>}</p>
+            {activeFilterCount > 0 && <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={clearFilters}>Clear all</Button>}
+          </div>
+          {renderFilterFields('desktop')}
+        </Card>
+      </aside>
+      <div className="min-[761px]:hidden">
+        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="lg" className="w-full"><SlidersHorizontal />Filters &amp; sort{activeFilterCount > 0 && <Badge variant="red" className="ml-1">{activeFilterCount}</Badge>}</Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="gap-3 pb-0">
+            <SheetHeader>
+              <SheetTitle>Filters &amp; sort</SheetTitle>
+              <SheetDescription>Results update as you choose.</SheetDescription>
+            </SheetHeader>
+            <div className="overflow-y-auto px-5 pb-2">{renderFilterFields('sheet')}</div>
+            <SheetFooter>
+              <Button type="button" variant="outline" className="flex-1" onClick={clearFilters} disabled={activeFilterCount === 0}>Clear all</Button>
+              <SheetClose asChild><Button type="button" className="flex-1">Show results</Button></SheetClose>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+      </div><section className="browse-results-content"><div className="browse-category-pills"><Link className={!slug ? 'active' : ''} to="/listings">All listings</Link>{category && <Link className={!filters.subcategory ? 'active' : ''} to={`/category/${category.slug}`}>All in {category.name}</Link>}{category?.subcategories.map(s => <Link key={s.id} className={filters.subcategory === s.slug ? 'active' : ''} to={`/category/${category.slug}?subcategory=${encodeURIComponent(s.slug)}`}>{s.name}</Link>)}</div>{error ? <div className="public-error"><b>Could not load listings</b><span>{error}</span><button onClick={() => window.location.reload()}>Try again</button></div> : loading ? <div className="listing-grid">{[1,2,3,4,5,6,7,8].map(n => <div className="listing-skeleton" key={n}><div/><span/><i/></div>)}</div> : ads.length ? <><div className="listing-grid">{ads.map(ad => <ListingCard key={ad.id} ad={ad}/>)}</div><div className="browse-pagination"><button disabled={!hasPrevious} onClick={() => setPage(p => Math.max(1, p - 1))}><ArrowLeft size={14}/> Previous</button><span>Page {page}</span><button disabled={!hasNext} onClick={() => setPage(p => p + 1)}>Next <ArrowRight size={14}/></button></div></> : <div className="public-empty"><Store size={22}/><b>No listings found</b><span>Try a different search or browse another category.</span><Link to="/listings">Browse all listings <ArrowRight size={14}/></Link></div>}</section></div></main><footer className="public-footer"><div className="public-footer-bottom"><Link to="/">MarketDay Liberia</Link><span>Local finds. Liberian pride.</span></div></footer></div>
 }

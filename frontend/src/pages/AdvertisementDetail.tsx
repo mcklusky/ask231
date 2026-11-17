@@ -1,12 +1,15 @@
-import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Eye, Heart, MapPin, MessageCircle, Phone, ShieldCheck, Store, Send } from '../lib/site-icons'
-import { useEffect, useState, type FormEvent } from 'react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Eye, Store } from '../lib/site-icons'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { chatApi } from '../lib/chat'
 import { formatCurrencyAmount, formatLocation, marketplaceApi, type Advertisement } from '../lib/marketplace'
 import { messageFromError } from '../utils/errors'
 import { ListingCard, formatPrice } from './Home'
-import ReportListing from '../components/ReportListing'
+import ContactPanel from '@/components/listing/ContactPanel'
+import ReportDialog from '@/components/listing/ReportDialog'
+import SellerCard from '@/components/listing/SellerCard'
 import PublicHeader from '../components/PublicHeader'
 import VerifyEmailNotice from '../components/VerifyEmailNotice'
 
@@ -22,11 +25,7 @@ export default function AdvertisementDetail() {
   const [error, setError] = useState('')
   const [chatError, setChatError] = useState('')
   const [startingChat, setStartingChat] = useState(false)
-  const [showOfferForm, setShowOfferForm] = useState(false)
-  const [offerAmount, setOfferAmount] = useState('')
-  const [messageDraft, setMessageDraft] = useState('')
   const [saved, setSaved] = useState(false)
-  const [favoriteMessage, setFavoriteMessage] = useState('')
 
   useEffect(() => {
     let alive = true
@@ -44,51 +43,44 @@ export default function AdvertisementDetail() {
 
   useEffect(() => { if (!profile || !slug) { setSaved(false); return } marketplaceApi.favorites().then(({data}) => setSaved(data.some(item => item.slug === slug))).catch(() => undefined) }, [profile, slug])
 
+  const goToSignIn = () => navigate(`/login?next=${encodeURIComponent(location.pathname)}`)
+
   async function toggleFavorite() {
-    if (!profile) { navigate(`/login?next=${encodeURIComponent(location.pathname)}`); return }
-    try { if (saved) await marketplaceApi.removeFavorite(slug); else await marketplaceApi.addFavorite(slug); setSaved(!saved); setFavoriteMessage(saved ? 'Removed from saved listings.' : 'Saved to your listings.') } catch { setFavoriteMessage('Could not update saved listings. Please try again.') }
+    if (!profile) { goToSignIn(); return }
+    try {
+      if (saved) { await marketplaceApi.removeFavorite(slug); toast('Removed from saved listings') }
+      else { await marketplaceApi.addFavorite(slug); toast.success('Saved to your listings', { action: { label: 'View', onClick: () => navigate('/favorites') } }) }
+      setSaved(!saved)
+    } catch (e) { toast.error(messageFromError(e, 'Could not update saved listings. Please try again.')) }
   }
 
   async function messageSeller() {
-    if (!profile) { navigate(`/login?next=${encodeURIComponent(location.pathname)}`); return }
+    if (!profile) { goToSignIn(); return }
     if (!ad) return
     setChatError(''); setStartingChat(true)
-    try {
-      const { data } = await chatApi.start(ad.slug)
-      navigate(`/messages/${data.id}`)
-    } catch (e) { setChatError(messageFromError(e, 'We could not start a conversation. Please try again.')) }
+    try { const { data } = await chatApi.start(ad.slug); navigate(`/messages/${data.id}`) }
+    catch (e) { setChatError(messageFromError(e, 'We could not start a conversation. Please try again.')) }
     finally { setStartingChat(false) }
   }
 
-  async function sendInlineMessage(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const body = messageDraft.trim()
-    if (!body) return
-    if (!profile) { navigate(`/login?next=${encodeURIComponent(location.pathname)}`); return }
-    if (!ad) return
+  /** Start (or reuse) the chat for this listing, send one message, then open the conversation. */
+  async function sendToSeller(body: string, sentToast: string, failure: string) {
+    if (!profile) { goToSignIn(); return false }
+    if (!ad) return false
     setChatError(''); setStartingChat(true)
     try {
       const { data } = await chatApi.start(ad.slug)
       await chatApi.send(data.id, body)
-      setMessageDraft('')
+      toast.success(sentToast)
       navigate(`/messages/${data.id}`)
-    } catch (e) { setChatError(messageFromError(e, 'Your message could not be sent. Please try again.')) }
+      return true
+    } catch (e) { setChatError(messageFromError(e, failure)); return false }
     finally { setStartingChat(false) }
   }
-  async function makeOffer(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!profile) { navigate(`/login?next=${encodeURIComponent(location.pathname)}`); return }
-    if (!ad) return
-    const amount = Number(offerAmount)
-    if (!Number.isFinite(amount) || amount <= 0) return
-    setChatError(''); setStartingChat(true)
-    try {
-      const { data } = await chatApi.start(ad.slug)
-      await chatApi.send(data.id, `Hello, I’m interested in ${ad.title}. I’d like to offer ${formatCurrencyAmount(amount, ad.currency)}. Would you consider this offer?`)
-      navigate(`/messages/${data.id}`)
-    } catch (e) { setChatError(messageFromError(e, 'Your offer could not be sent. Please try again.')) }
-    finally { setStartingChat(false) }
-  }
+  const sendMessage = (body: string) => sendToSeller(body, 'Message sent', 'Your message could not be sent. Please try again.')
+  const sendOffer = (amount: number) => ad
+    ? sendToSeller(`Hello, I’m interested in ${ad.title}. I’d like to offer ${formatCurrencyAmount(amount, ad.currency)}. Would you consider this offer?`, 'Offer sent to the seller', 'Your offer could not be sent. Please try again.')
+    : Promise.resolve(false)
 
   if (loading) return <div className="public-market"><div className="detail-loading"><div/><span>Loading listing…</span></div></div>
   if (error || !ad) return <div className="public-market"><div className="detail-error"><Link to="/listings"><ArrowLeft size={15}/> Back to listings</Link><div><Store size={28}/><h1>This listing isn't available</h1><p>{error || 'It may have been removed or is no longer active.'}</p><Link className="market-hero-primary" to="/listings">Explore other listings</Link></div></div></div>
@@ -101,8 +93,19 @@ export default function AdvertisementDetail() {
       <div className="detail-layout"><section className="detail-primary"><div className="detail-gallery"><div className="detail-main-image">{image ? <img src={image} alt={ad.images[imageIndex]?.alt_text || ad.title}/> : <div className="listing-placeholder large"><Store size={58}/></div>}{ad.images.length > 1 && <><button aria-label="Previous image" onClick={() => setImageIndex(i => (i - 1 + ad.images.length) % ad.images.length)}><ChevronLeft size={20}/></button><button aria-label="Next image" onClick={() => setImageIndex(i => (i + 1) % ad.images.length)}><ChevronRight size={20}/></button><span>{imageIndex + 1} / {ad.images.length}</span></>}</div>{ad.images.length > 1 && <div className="detail-thumbnails">{ad.images.map((item, index) => <button key={item.id} className={index === imageIndex ? 'selected' : ''} onClick={() => setImageIndex(index)}><img src={item.image_url} alt={item.alt_text || `${ad.title} ${index + 1}`}/></button>)}</div>}</div>
         <div className="detail-description"><div className="detail-section-heading"><h2>Description</h2><span><Eye size={14}/> {ad.views_count.toLocaleString()} views</span></div><p>{ad.description}</p><div className="detail-facts"><div><small>Condition</small><b>{ad.condition === 'new' ? 'New' : 'Used'}</b></div><div><small>Category</small><b>{ad.category.name} · {ad.subcategory.name}</b></div><div><small>Location</small><b>{formatLocation(ad)}</b></div><div><small>Posted</small><b>{new Date(ad.created_at).toLocaleDateString('en-LR', { day: 'numeric', month: 'short', year: 'numeric' })}</b></div></div></div>
       </section>
-        <aside className="detail-sidebar"><div className="detail-price-card"><span className="detail-condition">{ad.condition === 'new' ? 'NEW' : 'PRE-OWNED'}</span><h1>{formatPrice(ad)}</h1><h2>{ad.title}</h2><p><MapPin size={14}/>{formatLocation(ad)}</p><button className="favorite-toggle" onClick={() => void toggleFavorite()}><Heart size={16} fill={saved ? "currentColor" : "none"}/>{saved ? "Saved listing" : "Save listing"}</button>{favoriteMessage && <small className="favorite-feedback" role="status">{favoriteMessage}</small>}<button className="detail-offer-toggle" type="button" onClick={() => setShowOfferForm(open => !open)} aria-expanded={showOfferForm}>{showOfferForm ? 'Cancel offer' : 'Make an offer'}</button>{showOfferForm && <form className="detail-offer-form" onSubmit={makeOffer}><label htmlFor="buyer-offer">Your offer</label><div className="detail-offer-input"><span>{ad.currency}</span><input id="buyer-offer" type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="Enter amount" value={offerAmount} onChange={event => setOfferAmount(event.target.value)} required/></div><button type="submit" disabled={startingChat || !offerAmount || Number(offerAmount) <= 0}>{startingChat ? 'Sending offer…' : profile ? 'Send offer to seller' : 'Sign in to make an offer'}</button><small>Your offer will be sent to the seller in a private chat.</small></form>}<VerifyEmailNotice action="message this seller"/><div className="detail-contact-actions"><button className="detail-message" onClick={() => void messageSeller()} disabled={startingChat}><MessageCircle size={16}/>{startingChat ? 'Opening chat…' : 'Message seller'}</button><a href={`tel:${phone}`} className="detail-call"><Phone size={16}/> Call seller</a><a href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Hello, I saw your listing for ${ad.title} on MarketDay.`)}`} target="_blank" rel="noreferrer" className="detail-whatsapp"><MessageCircle size={16}/> WhatsApp</a></div><form className="detail-inline-message" onSubmit={sendInlineMessage}><label htmlFor="detail-message-draft">Message seller</label><textarea id="detail-message-draft" rows={3} maxLength={4000} placeholder="Ask a question about this item…" value={messageDraft} onChange={event => setMessageDraft(event.target.value)} /><button type="submit" disabled={!messageDraft.trim() || startingChat}>{startingChat ? "Sending…" : <><Send size={15}/> Send message</>}</button></form>{chatError && <div className="chat-error detail-chat-error" role="alert">{chatError}</div>}<small className="detail-contact-note"><ShieldCheck size={13}/> Connect directly with the seller. Meet in a safe public place.</small><ReportListing slug={ad.slug}/></div>
-          <div className="seller-card"><span className="seller-avatar"><Store size={19}/></span><div className="seller-card-info"><small>LISTED BY</small><b>{ad.seller_name || 'MarketDay seller'} {ad.seller_verified && <BadgeCheck size={15}/>}</b><span>{ad.seller_verified ? 'Verified seller' : 'Community seller'}</span></div><div className="seller-card-badge"><ShieldCheck size={15}/></div></div><div className="seller-safety"><b>Stay safe when buying</b><span>Check the item in person and agree on a safe public meeting place.</span></div>
+        <aside className="detail-sidebar space-y-3 max-[767px]:mb-3">
+          <ContactPanel
+            title={ad.title} priceLabel={formatPrice(ad)} priceAmount={Number(ad.price)} currency={ad.currency}
+            location={formatLocation(ad)} conditionLabel={ad.condition === 'new' ? 'New' : 'Pre-owned'}
+            saved={saved} busy={startingChat} error={chatError}
+            onToggleSave={() => void toggleFavorite()} onMessageSeller={() => void messageSeller()}
+            onSendMessage={sendMessage} onSendOffer={sendOffer}
+            callHref={`tel:${phone}`}
+            whatsappHref={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Hello, I saw your listing for ${ad.title} on MarketDay.`)}`}
+            notice={<VerifyEmailNotice action="message this seller" />}
+            report={<ReportDialog slug={ad.slug} />}
+          />
+          <SellerCard name={ad.seller_name || 'MarketDay seller'} verified={ad.seller_verified} />
         </aside>
         </div>
       {similar.length > 0 && <section className="public-section similar-section"><div className="public-section-heading"><div><span className="public-eyebrow">MORE TO EXPLORE</span><h2>Similar listings</h2></div><Link to={`/category/${ad.category.slug}`}>More in {ad.category.name} <ChevronRight size={15}/></Link></div><div className="listing-grid">{similar.map(item => <ListingCard key={item.id} ad={item}/>)}</div></section>}
