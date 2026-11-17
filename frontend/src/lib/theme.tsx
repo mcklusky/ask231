@@ -23,3 +23,8 @@ export function ThemeToggle() {
   const Icon = isDark ? Sun : Moon
   return <button className="theme-toggle" type="button" onClick={context.toggleTheme} aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`} aria-pressed={isDark} title={`Switch to ${isDark ? 'light' : 'dark'} mode`}><Icon size={17} aria-hidden="true" /><span>{isDark ? 'Light' : 'Dark'}</span></button>
 }
+export function useTheme() {
+  const context = useContext(ThemeContext)
+  if (!context) throw new Error('useTheme must be used inside ThemeProvider')
+  return context
+}

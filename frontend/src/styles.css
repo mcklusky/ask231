@@ -930,13 +930,10 @@ body{color:var(--text);background:#fff}
 .home-empty-action:focus-visible{outline:2px solid var(--brand-blue);outline-offset:2px}
 .verify-email-notice{display:flex;align-items:flex-start;gap:10px;margin:0 0 14px;padding:12px 14px;border:1px solid var(--border);border-left:4px solid var(--brand-blue);border-radius:10px;background:var(--brand-blue-soft);color:var(--text)}
 .verify-email-icon{flex:none;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:var(--surface)}
-.verify-email-notice div{flex:1;min-width:0}
+.verify-email-notice>div:not(.shrink-0){flex:1;min-width:0}
 .verify-email-notice b{display:block;font-size:13px}
 .verify-email-notice p{margin:3px 0 0;color:var(--muted);font-size:12px;line-height:1.45;overflow-wrap:anywhere}
-.verify-email-notice button{flex:none;align-self:center;min-height:40px;padding:0 14px;border:1px solid var(--brand-blue);border-radius:8px;background:var(--surface);color:var(--brand-blue);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
-[data-theme="dark"] .verify-email-notice button{color:var(--brand-blue-dark);border-color:var(--brand-blue-dark)}
-.verify-email-notice button:disabled{opacity:.6;cursor:wait}
-@media(max-width:480px){.verify-email-notice{flex-wrap:wrap}.verify-email-notice button{width:100%}}
+@media(max-width:480px){.verify-email-notice{flex-wrap:wrap}}
 .report-listing{margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
 .report-listing-toggle{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0;border:0;background:none;color:var(--muted);font:inherit;font-size:12px;font-weight:600;cursor:pointer}
 .report-listing-toggle:hover,.report-listing-toggle[aria-expanded="true"]{color:var(--brand-red)}
@@ -1118,4 +1115,33 @@ select option[value=""]{color:var(--muted)}
 @media(max-width:1100px){
   .admin-table th:last-child,.admin-table td:last-child{position:sticky;right:0;z-index:1;background:var(--surface);box-shadow:-10px 0 10px -10px rgba(15,30,45,.35)}
   .admin-table thead th:last-child{background:var(--canvas)}
+}
+
+/* ===== shadcn/ui theme tokens — MarketDay red, white & blue (HSL triplets) ===== */
+:root{
+  --ui-background:0 0% 100%;--ui-foreground:213 27% 17%;
+  --ui-card:0 0% 100%;--ui-card-foreground:213 27% 17%;
+  --ui-popover:0 0% 100%;--ui-popover-foreground:213 27% 17%;
+  --ui-primary:213 75% 37%;--ui-primary-foreground:0 0% 100%;        /* Liberian blue #1857a6 */
+  --ui-secondary:214 47% 96%;--ui-secondary-foreground:213 75% 30%;
+  --ui-muted:214 40% 96%;--ui-muted-foreground:214 13% 44%;
+  --ui-accent:214 60% 95%;--ui-accent-foreground:213 75% 30%;
+  --ui-destructive:353 62% 49%;--ui-destructive-foreground:0 0% 100%; /* red #c92f42 */
+  --ui-border:212 25% 88%;--ui-input:212 25% 84%;--ui-ring:213 75% 37%;
+  --ui-radius:0.625rem;
+  --ui-brand-blue:213 75% 37%;--ui-brand-blue-deep:214 72% 24%;
+  --ui-brand-red:353 62% 49%;--ui-brand-red-hover:353 62% 42%;
+}
+[data-theme="dark"]{
+  --ui-background:210 33% 9%;--ui-foreground:213 38% 93%;
+  --ui-card:210 31% 14%;--ui-card-foreground:213 38% 93%;
+  --ui-popover:210 31% 14%;--ui-popover-foreground:213 38% 93%;
+  --ui-primary:213 64% 46%;--ui-primary-foreground:0 0% 100%;
+  --ui-secondary:209 28% 19%;--ui-secondary-foreground:213 38% 93%;
+  --ui-muted:209 28% 17%;--ui-muted-foreground:210 15% 71%;
+  --ui-accent:209 28% 20%;--ui-accent-foreground:213 38% 93%;
+  --ui-destructive:353 62% 52%;--ui-destructive-foreground:0 0% 100%;
+  --ui-border:209 21% 25%;--ui-input:209 21% 30%;--ui-ring:213 70% 68%;
+  --ui-brand-blue:213 70% 68%;--ui-brand-blue-deep:214 60% 16%;
+  --ui-brand-red:353 62% 52%;--ui-brand-red-hover:353 62% 46%;
 }
