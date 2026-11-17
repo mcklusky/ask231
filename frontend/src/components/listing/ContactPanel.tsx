@@ -36,10 +36,11 @@ export type ContactPanelProps = {
   notice?: ReactNode
   /** The "Report this listing" trigger. */
   report?: ReactNode
+  /** Link to share; defaults to the current page. Real ads pass the /s/<slug>/ preview link. */
+  shareUrl?: string
 }
 
-async function shareListing(title: string) {
-  const url = window.location.href
+async function shareListing(title: string, url: string) {
   try {
     if (navigator.share) { await navigator.share({ title, text: `${title} on MarketDay`, url }); return }
     await navigator.clipboard.writeText(url)
@@ -85,7 +86,7 @@ export default function ContactPanel(props: ContactPanelProps) {
           <Button variant="outline" onClick={props.onToggleSave} aria-pressed={saved} className={cn(saved && 'border-brand-red/50 text-brand-red hover:text-brand-red')}>
             <Heart className={cn(saved && 'fill-current')} />{saved ? 'Saved' : 'Save'}
           </Button>
-          <Button variant="outline" onClick={() => void shareListing(title)}><Share2 />Share</Button>
+          <Button variant="outline" onClick={() => void shareListing(title, props.shareUrl ?? window.location.href)}><Share2 />Share</Button>
         </div>
 
         {props.notice}

@@ -1,6 +1,16 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api'
+
+/**
+ * Link to share for an ad. Served by Django (/s/<slug>/) so WhatsApp, Facebook and X can read the ad's
+ * title, price and photo; people opening it are forwarded to the ad page. In production VITE_API_URL is
+ * "/api" (same site), locally it is the backend on port 8000.
+ */
+export function shareUrlFor(slug: string) {
+  const base = API_URL.replace(/\/api\/?$/, '')
+  return new URL(`${base}/s/${encodeURIComponent(slug)}/`, window.location.origin).toString()
+}
 export const api = axios.create({ baseURL: API_URL, headers: { 'Content-Type': 'application/json' } })
 export type Tokens = { access: string; refresh: string }
 export type Profile = { id: number; email: string; first_name: string; last_name: string; email_verified: boolean; is_staff: boolean; phone_number: string; country_code: string; county: string; town: string; preferred_currency: 'LRD' | 'USD'; seller_profile: null | { business_name: string; bio: string; is_verified: boolean; verification_requested?: boolean } }

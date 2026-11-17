@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { shareUrlFor } from '../lib/api'
 import { chatApi } from '../lib/chat'
 import { formatCurrencyAmount, formatLocation, marketplaceApi, type Advertisement } from '../lib/marketplace'
 import { messageFromError } from '../utils/errors'
@@ -104,6 +105,7 @@ export default function AdvertisementDetail() {
             whatsappHref={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Hello, I saw your listing for ${ad.title} on MarketDay.`)}`}
             notice={<VerifyEmailNotice action="message this seller" />}
             report={<ReportDialog slug={ad.slug} />}
+            shareUrl={shareUrlFor(ad.slug)}
           />
           <SellerCard name={ad.seller_name || 'MarketDay seller'} verified={ad.seller_verified} />
         </aside>

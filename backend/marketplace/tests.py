@@ -349,3 +349,67 @@ class ListingPhotoOptimisationTests(TestCase):
         self.assertFalse(os.path.exists(original_path))
         with Image.open(legacy.image.path) as display:
             self.assertEqual(display.size, (1600, 1200))
+
+
+@override_settings(FRONTEND_URL="https://marketday.example")
+class ShareLinkPreviewTests(TestCase):
+    """/s/<slug>/ gives WhatsApp/Facebook crawlers Open Graph tags and forwards people to the ad page."""
+
+    def setUp(self):
+        self.seller = User.objects.create_user(email="share@marketday.test", password="StrongPass!2026")
+        self.fields = dict(seller=self.seller, category=Category.objects.get(name="Vehicles"), subcategory=SubCategory.objects.filter(category__name="Vehicles").first(),
+                           county=County.objects.get(slug="montserrado"), town=Town.objects.get(slug="monrovia"), description="Clean   car,\n well kept. " * 30,
+                           price="7800.00", currency="USD", condition="used", phone_number="+231 770 123 456")
+        self.media = tempfile.TemporaryDirectory()
+        self.override = override_settings(MEDIA_ROOT=self.media.name)
+        self.override.enable()
+
+    def tearDown(self):
+        self.override.disable()
+        self.media.cleanup()
+
+    def test_active_ad_has_open_graph_tags_photo_and_redirect(self):
+        from .images import process_listing_photo
+        ad = Advertisement.objects.create(status=Advertisement.Status.ACTIVE, title="Toyota Corolla 2016", **self.fields)
+        buffer = BytesIO(); Image.new("RGB", (2000, 1500), "navy").save(buffer, format="JPEG")
+        AdvertisementImage.from_processed(ad, process_listing_photo(BytesIO(buffer.getvalue()))).save()
+        response = self.client.get(f"/s/{ad.slug}/")
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('<meta property="og:title" content="US$ 7,800 · Toyota Corolla 2016">', html)
+        self.assertIn('content="Used · Monrovia, Montserrado · Vehicles — Clean car, well kept.', html)
+        # JPEG preview (older WhatsApp versions don't show WebP), declared at the size actually served.
+        self.assertIn(f'<meta property="og:image" content="http://testserver/s/{ad.slug}/image.jpg">', html)
+        self.assertIn('<meta property="og:image:type" content="image/jpeg">', html)
+        self.assertIn('<meta property="og:image:width" content="1200">', html)
+        self.assertIn('<meta property="og:image:height" content="900">', html)
+        image = self.client.get(f"/s/{ad.slug}/image.jpg")
+        self.assertEqual(image.status_code, 200)
+        self.assertEqual(image["Content-Type"], "image/jpeg")
+        self.assertIn("max-age=86400", image["Cache-Control"])
+        with Image.open(BytesIO(image.content)) as preview:
+            self.assertEqual((preview.format, preview.size), ("JPEG", (1200, 900)))
+        self.assertIn(f'<meta property="og:url" content="http://testserver/s/{ad.slug}/">', html)
+        self.assertIn(f'url=https://marketday.example/ads/{ad.slug}', html)
+
+    def test_html_in_titles_is_escaped(self):
+        ad = Advertisement.objects.create(status=Advertisement.Status.ACTIVE, title='Phone "deal" <script>alert(1)</script>', **self.fields)
+        html = self.client.get(f"/s/{ad.slug}/").content.decode()
+        self.assertNotIn("<script>alert(1)</script>", html)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", html)
+        self.assertIn("&quot;deal&quot;", html)
+
+    def test_pending_and_unknown_ads_reveal_nothing(self):
+        pending = Advertisement.objects.create(status=Advertisement.Status.PENDING, title="Secret pending car", **self.fields)
+        for path in (f"/s/{pending.slug}/", "/s/does-not-exist/"):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 404)
+            self.assertNotIn("Secret pending car", response.content.decode())
+            self.assertIn("url=https://marketday.example/listings", response.content.decode())
+        self.assertEqual(self.client.get(f"/s/{pending.slug}/image.jpg").status_code, 404)
+
+    def test_ad_without_photo_uses_branded_site_image(self):
+        ad = Advertisement.objects.create(status=Advertisement.Status.ACTIVE, title="No photo bike", **self.fields)
+        html = self.client.get(f"/s/{ad.slug}/").content.decode()
+        self.assertIn('<meta property="og:image" content="https://marketday.example/og-default.png">', html)
+        self.assertIn('<meta name="twitter:card" content="summary_large_image">', html)
