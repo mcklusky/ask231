@@ -1,37 +1,149 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { Bell, Check, ChevronRight, ClipboardList, Flag, LayoutDashboard, MapPin, Megaphone, Package, Plus, Search, ShieldAlert, ShieldCheck, Store, Tag, Users } from '../lib/site-icons'
 import { Link } from 'react-router-dom'
+import { toast } from 'sonner'
+import { Check, ChevronDown, ChevronRight, ClipboardList, ExternalLink, Flag, LayoutDashboard, Loader2, MapPin, Megaphone, Moon, Package, Plus, Search, ShieldAlert, Store, Sun, Tag, Users } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { useTheme } from '../lib/theme'
 import { messageFromError } from '../utils/errors'
-import { ThemeToggle } from '../lib/theme'
 import { formatCurrencyAmount } from '../lib/marketplace'
+import { cn } from '@/lib/utils'
+import { Alert } from '@/components/ui/alert'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge, type BadgeProps } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { usePromptDialog } from '@/components/ui/prompt-dialog'
 
 type Tab = 'overview' | 'users' | 'sellers' | 'ads' | 'categories' | 'locations' | 'reports' | 'promotions'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>
 type Stats = { users: number; sellers: number; suspended_users: number; pending_ads: number; active_ads: number; sold_ads: number; rejected_ads: number; expired_ads: number; suspended_ads: number; open_reports: number; active_promotions: number; recent_ads: Row[]; recent_reports: Row[] }
+type Column = { key: string; label: string; render?: (row: Row) => ReactNode }
+
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard }, { id: 'users', label: 'Users', icon: Users }, { id: 'sellers', label: 'Sellers', icon: Store }, { id: 'ads', label: 'Advertisements', icon: Package }, { id: 'categories', label: 'Categories', icon: Tag }, { id: 'locations', label: 'Locations', icon: MapPin }, { id: 'reports', label: 'Reports', icon: Flag }, { id: 'promotions', label: 'Promotions', icon: Megaphone },
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard }, { id: 'users', label: 'Users', icon: Users }, { id: 'sellers', label: 'Sellers', icon: Store }, { id: 'ads', label: 'Advertisements', icon: Package },
+  { id: 'categories', label: 'Categories', icon: Tag }, { id: 'locations', label: 'Locations', icon: MapPin }, { id: 'reports', label: 'Reports', icon: Flag }, { id: 'promotions', label: 'Promotions', icon: Megaphone },
 ]
 const endpoints: Partial<Record<Tab, string>> = { users: '/admin/users/', sellers: '/admin/sellers/', ads: '/admin/advertisements/', categories: '/admin/categories/', locations: '/admin/towns/', reports: '/admin/reports/', promotions: '/admin/promotions/' }
 const titleCase = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase())
+const fmtDate = (value?: string) => value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
+const toLocalInput = (iso: string) => { const d = new Date(iso); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16) }
+const sectionDescription: Record<Tab, string> = { overview: 'Monitor activity and handle work that needs attention.', users: 'Review member accounts and control access.', sellers: 'Manage seller profiles and verification badges.', ads: 'Review, approve, reject, or suspend advertisements.', categories: 'Maintain the categories sellers use for listings.', locations: 'Manage the Liberia counties and their towns.', reports: 'Review user-submitted reports and record outcomes.', promotions: 'Schedule listing placements without processing payments.' }
 
-function StatCard({ label, value, icon: Icon, tone }: { label: string; value: number; icon: typeof Users; tone: string }) {
-  return <article className="admin-stat-card"><span className={`admin-stat-icon ${tone}`}><Icon size={19} /></span><div><small>{label}</small><b>{value.toLocaleString()}</b></div></article>
+const STATUS_VARIANT: Record<string, BadgeProps['variant']> = {
+  active: 'success', verified: 'success', resolved: 'success',
+  pending: 'warning', reviewing: 'warning', scheduled: 'warning',
+  rejected: 'red', suspended: 'red', open: 'red',
+  sold: 'secondary', inactive: 'secondary', unverified: 'outline', ended: 'outline', cancelled: 'outline', expired: 'outline', dismissed: 'outline',
 }
-function AdminTable({ columns, rows, empty }: { columns: { key: string; label: string; render?: (row: Row) => ReactNode }[]; rows: Row[]; empty: string }) {
-  if (!rows.length) return <div className="admin-empty"><ClipboardList size={25} /><b>Nothing here yet</b><span>{empty}</span></div>
-  return <div className="admin-table-wrap"><table className="admin-table"><thead><tr>{columns.map(column => <th key={column.key}>{column.label}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={row.id ?? index}>{columns.map(column => <td key={column.key}>{column.render ? column.render(row) : String(row[column.key] ?? '—')}</td>)}</tr>)}</tbody></table></div>
+function StatusPill({ value }: { value: string }) { return <Badge variant={STATUS_VARIANT[value] ?? 'outline'}>{titleCase(value)}</Badge> }
+const selectClass = 'h-10 min-w-0 max-sm:w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30'
+
+function PrimaryCell({ title, subtitle }: { title: ReactNode; subtitle?: ReactNode }) {
+  return <div className="min-w-0"><p className="truncate font-semibold text-foreground">{title}</p>{subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}</div>
+}
+
+function DataTable({ columns, rows, empty }: { columns: Column[]; rows: Row[]; empty: string }) {
+  if (!rows.length) return (
+    <div className="grid justify-items-center gap-2 px-6 py-12 text-center">
+      <span className="grid size-12 place-items-center rounded-2xl bg-secondary text-primary"><ClipboardList className="size-6" aria-hidden="true" /></span>
+      <b>Nothing here yet</b><p className="text-sm text-muted-foreground">{empty}</p>
+    </div>
+  )
+  const lastIsActions = columns[columns.length - 1]?.key.startsWith('action')
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[720px] text-left text-sm">
+        <thead className="bg-muted/60 text-[11px] uppercase tracking-wider text-muted-foreground">
+          <tr>{columns.map((column, i) => <th key={column.key} scope="col" className={cn('h-10 whitespace-nowrap px-4 font-semibold', lastIsActions && i === columns.length - 1 && 'sticky right-0 bg-muted text-right')}>{column.label}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={row.id ?? index} className="border-t transition-colors hover:bg-muted/40">
+              {columns.map((column, i) => (
+                <td key={column.key} className={cn('px-4 py-3 align-middle text-muted-foreground', lastIsActions && i === columns.length - 1 && 'sticky right-0 bg-card text-right shadow-[-8px_0_8px_-8px_rgba(15,30,45,0.25)]')}>
+                  {column.render ? column.render(row) : String(row[column.key] ?? '—')}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function StatCard({ label, value, icon: Icon, tone, onClick }: { label: string; value: number; icon: typeof Users; tone: string; onClick?: () => void }) {
+  const body = <><span className={cn('grid size-11 shrink-0 place-items-center rounded-xl', tone)}><Icon className="size-5" aria-hidden="true" /></span><span className="min-w-0"><span className="block truncate text-xs font-medium text-muted-foreground">{label}</span><span className="block font-display text-2xl font-extrabold tabular-nums">{value.toLocaleString()}</span></span></>
+  return onClick
+    ? <button type="button" onClick={onClick} className="flex items-center gap-3 rounded-lg border bg-card p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{body}</button>
+    : <div className="flex items-center gap-3 rounded-lg border bg-card p-4 shadow-sm">{body}</div>
+}
+
+function Overview({ stats, onSelect }: { stats: Stats | null; onSelect: (tab: Tab, filter?: string) => void }) {
+  if (!stats) return <Alert variant="error">Could not load marketplace statistics.</Alert>
+  const adStates = [
+    { label: 'Active', value: stats.active_ads, bar: 'bg-emerald-500' }, { label: 'Pending review', value: stats.pending_ads, bar: 'bg-amber-500' }, { label: 'Sold', value: stats.sold_ads, bar: 'bg-primary' },
+    { label: 'Rejected', value: stats.rejected_ads, bar: 'bg-brand-red' }, { label: 'Expired', value: stats.expired_ads, bar: 'bg-slate-400' }, { label: 'Suspended', value: stats.suspended_ads, bar: 'bg-rose-800' },
+  ]
+  const totalAds = adStates.reduce((sum, state) => sum + state.value, 0)
+  const ListHeader = ({ title, subtitle, action, tab, filter }: { title: string; subtitle: string; action: string; tab: Tab; filter?: string }) => (
+    <div className="flex items-start justify-between gap-3 border-b p-4"><div><p className="font-display font-bold">{title}</p><p className="text-xs text-muted-foreground">{subtitle}</p></div><Button variant="link" size="sm" className="h-auto px-0" onClick={() => onSelect(tab, filter)}>{action}<ChevronRight /></Button></div>
+  )
+  return (
+    <div className="grid gap-4 [&>*]:min-w-0">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 [&>*]:min-w-0">
+        <StatCard label="Accounts" value={stats.users} icon={Users} tone="bg-secondary text-primary" onClick={() => onSelect('users')} />
+        <StatCard label="Seller profiles" value={stats.sellers} icon={Store} tone="bg-secondary text-primary" onClick={() => onSelect('sellers')} />
+        <StatCard label="Live ads" value={stats.active_ads} icon={Package} tone="bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" onClick={() => onSelect('ads', 'active')} />
+        <StatCard label="Awaiting review" value={stats.pending_ads} icon={ClipboardList} tone="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300" onClick={() => onSelect('ads', 'pending')} />
+        <StatCard label="Open reports" value={stats.open_reports} icon={Flag} tone="bg-brand-red/10 text-brand-red" onClick={() => onSelect('reports', 'open')} />
+        <StatCard label="Suspended accounts" value={stats.suspended_users} icon={ShieldAlert} tone="bg-muted text-muted-foreground" onClick={() => onSelect('users', 'suspended')} />
+        <StatCard label="Sold" value={stats.sold_ads} icon={Check} tone="bg-secondary text-primary" />
+        <StatCard label="Live promotions" value={stats.active_promotions} icon={Megaphone} tone="bg-brand-red/10 text-brand-red" onClick={() => onSelect('promotions', 'active')} />
+      </div>
+      <Card>
+        <ListHeader title="Advertisement health" subtitle={`${totalAds.toLocaleString()} listings across all statuses`} action="Manage listings" tab="ads" />
+        <div className="grid gap-x-8 gap-y-3 p-4 sm:grid-cols-2">
+          {adStates.map(state => (
+            <div key={state.label} className="grid grid-cols-[8rem_1fr_3rem] items-center gap-3 text-sm">
+              <span className="text-muted-foreground">{state.label}</span>
+              <div className="h-2 overflow-hidden rounded-full bg-muted"><div className={cn('h-full rounded-full', state.bar)} style={{ width: `${totalAds ? Math.max(state.value ? 3 : 0, (state.value / totalAds) * 100) : 0}%` }} /></div>
+              <b className="text-right tabular-nums">{state.value.toLocaleString()}</b>
+            </div>
+          ))}
+        </div>
+      </Card>
+      <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
+        <Card>
+          <ListHeader title="Recent listings" subtitle="Latest advertisements added" action="View all" tab="ads" />
+          {stats.recent_ads.length ? <ul>{stats.recent_ads.map(ad => (
+            <li key={ad.id} className="flex items-center gap-3 border-b px-4 py-3 last:border-b-0"><PrimaryCell title={ad.title} subtitle={`${ad.seller__email} · ${fmtDate(ad.created_at)}`} /><span className="ml-auto shrink-0"><StatusPill value={ad.status} /></span></li>
+          ))}</ul> : <p className="p-4 text-sm text-muted-foreground">No listings have been posted yet.</p>}
+        </Card>
+        <Card>
+          <ListHeader title="Reports needing attention" subtitle={`${stats.open_reports} open or under review`} action="Review queue" tab="reports" />
+          {stats.recent_reports.length ? <ul>{stats.recent_reports.map(report => (
+            <li key={report.id} className="flex items-center gap-3 border-b px-4 py-3 last:border-b-0"><PrimaryCell title={report.advertisement__title || report.reported_user__email || `Report #${report.id}`} subtitle={`${titleCase(report.reason)} · ${fmtDate(report.created_at)}`} /><span className="ml-auto shrink-0"><StatusPill value={report.status} /></span></li>
+          ))}</ul> : <p className="p-4 text-sm text-muted-foreground">No reports are waiting right now.</p>}
+        </Card>
+      </div>
+    </div>
+  )
 }
 
 export default function AdminDashboard() {
   const { profile } = useAuth()
+  const { theme, toggleTheme } = useTheme()
+  const { ask, dialog } = usePromptDialog()
   const [tab, setTab] = useState<Tab>('overview')
   const [stats, setStats] = useState<Stats | null>(null)
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [filter, setFilter] = useState('')
@@ -90,113 +202,306 @@ export default function AdminDashboard() {
   }, [tab, search, filter, page])
 
   useEffect(() => { void load() }, [load])
-  function reportError(e: unknown) { setError(messageFromError(e, 'The requested change could not be saved.')); setNotice('') }
-  async function changed(message: string) { setNotice(message); setError(''); await load() }
+  function selectTab(next: Tab, nextFilter = '') { setTab(next); setFilter(nextFilter); setSearch(''); setSearchInput(''); setPage(1) }
+  function reportError(e: unknown) { setError(messageFromError(e, 'The requested change could not be saved.')) }
+  async function changed(message: string) { toast.success(message); setError(''); await load() }
+
   async function setUserActive(user: Row) {
     const next = !user.is_active
-    if (next === false && !window.confirm(`Suspend ${user.email}? They will be unable to sign in.`)) return
-    try { await api.post(`/admin/users/${user.id}/status/`, { is_active: next }); await changed(next ? 'Account reactivated.' : 'Account suspended.') } catch (e) { reportError(e) }
+    if (!next && !await ask({ title: 'Suspend this account?', description: <><b>{user.email}</b> won’t be able to sign in until you reactivate them.</>, confirmLabel: 'Suspend account', destructive: true })) return
+    try { await api.post(`/admin/users/${user.id}/status/`, { is_active: next }); await changed(next ? 'Account reactivated' : 'Account suspended') } catch (e) { reportError(e) }
   }
   async function verifySeller(seller: Row) {
-    try { await api.post(`/admin/sellers/${seller.id}/verification/`, { is_verified: !seller.is_verified }); await changed(seller.is_verified ? 'Seller verification removed.' : 'Seller verified.') } catch (e) { reportError(e) }
+    try { await api.post(`/admin/sellers/${seller.id}/verification/`, { is_verified: !seller.is_verified }); await changed(seller.is_verified ? 'Seller badge removed' : 'Seller verified') } catch (e) { reportError(e) }
   }
   async function moderateAd(ad: Row, nextStatus: string) {
-    const reason = ['rejected', 'suspended'].includes(nextStatus) ? window.prompt(nextStatus === 'rejected' ? 'Reason for rejection:' : 'Reason for suspension:') : ''
-    if (['rejected', 'suspended'].includes(nextStatus) && !reason?.trim()) return
-    try { await api.post(`/admin/advertisements/${ad.id}/moderation/`, { status: nextStatus, rejection_reason: reason || '' }); await changed(`Advertisement ${nextStatus}.`) } catch (e) { reportError(e) }
+    let reason = ''
+    if (['rejected', 'suspended'].includes(nextStatus)) {
+      const values = await ask({
+        title: nextStatus === 'rejected' ? 'Reject advertisement' : 'Suspend advertisement',
+        description: <>The seller sees this reason on “{ad.title}”.</>,
+        fields: [{ name: 'reason', label: 'Reason', required: true, multiline: true, maxLength: 240, placeholder: nextStatus === 'rejected' ? 'e.g. Photos don’t match the item described.' : 'e.g. Reported as a possible scam.' }],
+        confirmLabel: nextStatus === 'rejected' ? 'Reject' : 'Suspend', destructive: true,
+      })
+      if (!values) return
+      reason = values.reason
+    }
+    try { await api.post(`/admin/advertisements/${ad.id}/moderation/`, { status: nextStatus, rejection_reason: reason }); await changed(`Advertisement ${nextStatus === 'active' ? 'approved' : nextStatus}`) } catch (e) { reportError(e) }
   }
   async function toggleActive(endpoint: string, row: Row, label: string) {
-    try { await api.patch(`${endpoint}${row.id}/`, { is_active: !row.is_active }); await changed(`${label} ${row.is_active ? 'deactivated' : 'activated'}.`) } catch (e) { reportError(e) }
+    try { await api.patch(`${endpoint}${row.id}/`, { is_active: !row.is_active }); await changed(`${label} ${row.is_active ? 'deactivated' : 'activated'}`) } catch (e) { reportError(e) }
   }
   async function editCategory(category: Row) {
-    const name = window.prompt('Category name:', category.name)
-    if (!name?.trim()) return
-    const description = window.prompt('Category description:', category.description || '')
-    if (description === null) return
-    const icon = window.prompt('Lucide icon name:', category.icon || '')
-    if (icon === null) return
-    try { await api.patch(`/admin/categories/${category.id}/`, { name: name.trim(), description: description.trim(), icon: icon.trim() }); await changed('Category details updated.') } catch (e) { reportError(e) }
+    const values = await ask({ title: 'Edit category', fields: [
+      { name: 'name', label: 'Name', defaultValue: category.name, required: true, maxLength: 100 },
+      { name: 'description', label: 'Description', defaultValue: category.description || '', multiline: true, maxLength: 240 },
+      { name: 'icon', label: 'Icon name', defaultValue: category.icon || '', maxLength: 50, hint: 'A Lucide icon name, e.g. car-front.' },
+    ] })
+    if (!values) return
+    try { await api.patch(`/admin/categories/${category.id}/`, values); await changed('Category updated') } catch (e) { reportError(e) }
   }
-  async function editSubcategory(subcategory: Row) {
-    const name = window.prompt('Subcategory name:', subcategory.name)
-    if (!name?.trim()) return
-    try { await api.patch(`/admin/subcategories/${subcategory.id}/`, { name: name.trim() }); await changed('Subcategory updated.') } catch (e) { reportError(e) }
-  }
-  async function editCounty(county: Row) {
-    const name = window.prompt('County name:', county.name)
-    if (!name?.trim()) return
-    try { await api.patch(`/admin/counties/${county.id}/`, { name: name.trim() }); await changed('County updated.') } catch (e) { reportError(e) }
-  }
-  async function editTown(town: Row) {
-    const name = window.prompt('Town name:', town.name)
-    if (!name?.trim()) return
-    try { await api.patch(`/admin/towns/${town.id}/`, { name: name.trim() }); await changed('Town updated.') } catch (e) { reportError(e) }
+  async function rename(endpoint: string, row: Row, label: string) {
+    const values = await ask({ title: `Rename ${label.toLowerCase()}`, fields: [{ name: 'name', label: `${label} name`, defaultValue: row.name, required: true, maxLength: 100 }] })
+    if (!values) return
+    try { await api.patch(`${endpoint}${row.id}/`, { name: values.name }); await changed(`${label} renamed`) } catch (e) { reportError(e) }
   }
   async function reschedulePromotion(promotion: Row) {
-    const current = new Date(promotion.ends_at)
-    const local = new Date(current.getTime() - current.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-    const end = window.prompt('Set a new promotion end date and time:', local)
-    if (!end) return
-    const ends_at = new Date(end).toISOString()
-    try { await api.patch(`/admin/promotions/${promotion.id}/`, { ends_at }); await changed('Promotion schedule updated.') } catch (e) { reportError(e) }
+    const values = await ask({ title: 'Reschedule promotion', description: promotion.advertisement_title, fields: [{ name: 'ends_at', label: 'New end date and time', type: 'datetime-local', defaultValue: toLocalInput(promotion.ends_at), required: true }] })
+    if (!values) return
+    try { await api.patch(`/admin/promotions/${promotion.id}/`, { ends_at: new Date(values.ends_at).toISOString() }); await changed('Promotion rescheduled') } catch (e) { reportError(e) }
+  }
+  async function cancelPromotion(promotion: Row) {
+    if (!await ask({ title: 'Cancel this promotion?', description: <>“{promotion.advertisement_title}” will stop being promoted immediately.</>, confirmLabel: 'Cancel promotion', destructive: true })) return
+    try { await api.patch(`/admin/promotions/${promotion.id}/`, { status: 'cancelled' }); await changed('Promotion cancelled') } catch (e) { reportError(e) }
   }
   async function updateReport(report: Row, status: string) {
-    const resolution_note = status === 'resolved' || status === 'dismissed' ? window.prompt('Resolution note:', report.resolution_note || '') || '' : ''
-    try { await api.post(`/admin/reports/${report.id}/resolve/`, { status, resolution_note }); await changed(`Report marked ${status}.`) } catch (e) { reportError(e) }
+    let resolution_note = ''
+    if (status === 'resolved' || status === 'dismissed') {
+      const values = await ask({ title: status === 'resolved' ? 'Resolve report' : 'Dismiss report', description: report.target_title || report.target_user_email, fields: [{ name: 'note', label: 'Resolution note', defaultValue: report.resolution_note || '', multiline: true, maxLength: 500, placeholder: 'What was done, for the record.' }], confirmLabel: status === 'resolved' ? 'Resolve' : 'Dismiss' })
+      if (!values) return
+      resolution_note = values.note
+    }
+    try { await api.post(`/admin/reports/${report.id}/resolve/`, { status, resolution_note }); await changed(`Report marked ${status}`) } catch (e) { reportError(e) }
   }
-  async function createCategory(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const form = new FormData(event.currentTarget)
-    try { await api.post('/admin/categories/', { name: form.get('name'), description: form.get('description'), icon: form.get('icon') }); event.currentTarget.reset(); await changed('Category created.') } catch (e) { reportError(e) }
+  function formHandler(run: (form: FormData) => Promise<unknown>, success: string) {
+    return async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault(); const element = event.currentTarget; const form = new FormData(element)
+      try { await run(form); element.reset(); await changed(success) } catch (e) { reportError(e) }
+    }
   }
-  async function createSubcategory(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const form = new FormData(event.currentTarget)
-    try { await api.post('/admin/subcategories/', { name: form.get('name'), category: Number(form.get('category')) }); event.currentTarget.reset(); await changed('Subcategory created.') } catch (e) { reportError(e) }
-  }
-  async function createCounty(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const form = new FormData(event.currentTarget)
-    try { await api.post('/admin/counties/', { name: form.get('name') }); event.currentTarget.reset(); await changed('County created.') } catch (e) { reportError(e) }
-  }
-  async function createTown(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const form = new FormData(event.currentTarget)
-    try { await api.post('/admin/towns/', { name: form.get('name'), county: Number(form.get('county')) }); event.currentTarget.reset(); await changed('Town created.') } catch (e) { reportError(e) }
-  }
-  async function createPromotion(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const form = new FormData(event.currentTarget)
-    try { await api.post('/admin/promotions/', { advertisement_slug: form.get('advertisement_slug'), kind: form.get('kind'), status: 'active', ends_at: new Date(String(form.get('ends_at'))).toISOString() }); event.currentTarget.reset(); await changed('Promotion created. No payment was processed.') } catch (e) { reportError(e) }
-  }
+  const createCategory = formHandler(form => api.post('/admin/categories/', { name: form.get('name'), description: form.get('description'), icon: form.get('icon') }), 'Category created')
+  const createSubcategory = formHandler(form => api.post('/admin/subcategories/', { name: form.get('name'), category: Number(form.get('category')) }), 'Subcategory created')
+  const createCounty = formHandler(form => api.post('/admin/counties/', { name: form.get('name') }), 'County created')
+  const createTown = formHandler(form => api.post('/admin/towns/', { name: form.get('name'), county: Number(form.get('county')) }), 'Town created')
+  const createPromotion = formHandler(form => api.post('/admin/promotions/', { advertisement_slug: form.get('advertisement_slug'), kind: form.get('kind'), status: 'active', ends_at: new Date(String(form.get('ends_at'))).toISOString() }), 'Promotion created. No payment was processed.')
 
-  const controls = <>
-    {tab === 'users' && <select className="admin-filter" value={filter} onChange={e => { setFilter(e.target.value); setPage(1) }}><option value="">All accounts</option><option value="active">Active</option><option value="suspended">Suspended</option></select>}
-    {tab === 'sellers' && <select className="admin-filter" value={filter} onChange={e => { setFilter(e.target.value); setPage(1) }}><option value="">All sellers</option><option value="true">Verified</option><option value="false">Unverified</option></select>}
-    {tab === 'ads' && <select className="admin-filter" value={filter} onChange={e => { setFilter(e.target.value); setPage(1) }}><option value="">All statuses</option>{['pending', 'active', 'rejected', 'sold', 'expired', 'suspended'].map(status => <option key={status} value={status}>{titleCase(status)}</option>)}</select>}
-    {tab === 'locations' && <select className="admin-filter" value={filter} onChange={e => { setFilter(e.target.value); setPage(1) }}><option value="">All counties</option>{counties.map(county => <option key={county.id} value={county.id}>{county.name}</option>)}</select>}
-    {tab === 'categories' && <select className="admin-filter" value={filter} onChange={e => { setFilter(e.target.value); setPage(1) }}><option value="">All categories</option><option value="true">Active</option><option value="false">Inactive</option></select>}
-    {tab === 'reports' && <select className="admin-filter" value={filter} onChange={e => { setFilter(e.target.value); setPage(1) }}><option value="">All reports</option>{['open', 'reviewing', 'resolved', 'dismissed'].map(status => <option value={status} key={status}>{titleCase(status)}</option>)}</select>}
-    {tab === 'promotions' && <select className="admin-filter" value={filter} onChange={e => { setFilter(e.target.value); setPage(1) }}><option value="">All promotions</option>{['scheduled', 'active', 'ended', 'cancelled'].map(status => <option value={status} key={status}>{titleCase(status)}</option>)}</select>}
-    {['users', 'sellers', 'ads', 'categories', 'locations', 'reports', 'promotions'].includes(tab) && <label className="admin-search"><Search size={15} /><input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder={`Search ${tab}…`} /></label>}
-  </>
+  const filterOptions: Partial<Record<Tab, { value: string; label: string }[]>> = {
+    users: [{ value: '', label: 'All accounts' }, { value: 'active', label: 'Active' }, { value: 'suspended', label: 'Suspended' }],
+    sellers: [{ value: '', label: 'All sellers' }, { value: 'true', label: 'Verified' }, { value: 'false', label: 'Unverified' }],
+    ads: [{ value: '', label: 'All statuses' }, ...['pending', 'active', 'rejected', 'sold', 'expired', 'suspended'].map(s => ({ value: s, label: titleCase(s) }))],
+    locations: [{ value: '', label: 'All counties' }, ...counties.map(county => ({ value: String(county.id), label: county.name }))],
+    categories: [{ value: '', label: 'All categories' }, { value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }],
+    reports: [{ value: '', label: 'All reports' }, ...['open', 'reviewing', 'resolved', 'dismissed'].map(s => ({ value: s, label: titleCase(s) }))],
+    promotions: [{ value: '', label: 'All promotions' }, ...['scheduled', 'active', 'ended', 'cancelled'].map(s => ({ value: s, label: titleCase(s) }))],
+  }
+  const current = tabs.find(item => item.id === tab)!
+  const ThemeIcon = theme === 'dark' ? Sun : Moon
+  const initials = (profile?.first_name?.[0] || profile?.email?.[0] || 'A').toUpperCase()
 
-  return <div className="admin-shell"><aside className="admin-sidebar"><Link to="/" className="admin-brand"><span className="brand-mark"><Store size={20} /></span><span>marketday<small>LIBERIA</small></span></Link><div className="admin-side-label">ADMINISTRATION</div><nav className="admin-nav">{tabs.map(item => { const Icon = item.icon; return <button key={item.id} className={tab === item.id ? 'selected' : ''} onClick={() => { setTab(item.id); setFilter(''); setSearch(''); setSearchInput(''); setPage(1) }}><Icon size={17} /><span>{item.label}</span>{item.id === 'reports' && stats?.open_reports ? <i>{stats.open_reports}</i> : null}</button> })}</nav><div className="admin-sidebar-bottom"><div className="admin-user-chip"><span>{(profile?.first_name?.[0] || profile?.email?.[0] || 'A').toUpperCase()}</span><div><b>{profile?.first_name || 'Administrator'}</b><small>Staff account</small></div></div><Link to="/account">Account settings</Link></div></aside>
-    <main className="admin-main"><header className="admin-topbar"><div><span>MarketDay</span><ChevronRight size={14} /><b>{tabs.find(item => item.id === tab)?.label}</b></div><div className="admin-top-actions"><span className="admin-live-dot" /> Admin workspace <ThemeToggle /><Link to="/" aria-label="Open marketplace"><Bell size={17} /></Link></div></header><section className="admin-content"><div className="admin-page-heading"><div><span className="eyebrow">MARKETDAY LIBERIA</span><h1>{tab === 'overview' ? 'Marketplace overview' : tabs.find(item => item.id === tab)?.label}</h1><p>{tab === 'overview' ? 'Monitor activity and handle work that needs attention.' : sectionDescription(tab)}</p></div>{controls}</div>{error && <div className="alert-error admin-alert" role="alert">{error}</div>}{notice && <div className="alert-success admin-alert" role="status">{notice}</div>}{loading ? <div className="admin-loading"><span className="spinner large-spinner" /> Loading dashboard…</div> : tab === 'overview' ? <Overview stats={stats} onSelect={next => { setTab(next); setPage(1) }} /> : <section className="admin-panel">{renderSection()}{tab !== 'categories' && pageInfo.count > 20 && <div className="admin-pagination"><button disabled={!pageInfo.previous} onClick={() => setPage(p => Math.max(1, p - 1))}>Previous</button><span>{Math.min((page - 1) * 20 + 1, pageInfo.count)}–{Math.min(page * 20, pageInfo.count)} of {pageInfo.count}</span><button disabled={!pageInfo.next} onClick={() => setPage(p => p + 1)}>Next</button></div>}</section>}</section></main></div>
-  
+  const rowButton = (label: string, onClick: () => void, danger = false, disabled = false) => (
+    <Button size="sm" variant="outline" disabled={disabled} onClick={onClick} className={cn(danger ? 'border-brand-red/50 text-brand-red hover:bg-brand-red hover:text-white' : 'border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground dark:text-brand-blue')}>{label}</Button>
+  )
+  const reviewMenu = (items: { label: string; onSelect: () => void; danger?: boolean }[]) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="border-primary/40 text-primary dark:text-brand-blue">Review<ChevronDown /></Button></DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-40">
+        {items.map((item, index) => [
+          item.danger && index > 0 && !items[index - 1].danger ? <DropdownMenuSeparator key={`sep-${item.label}`} /> : null,
+          <DropdownMenuItem key={item.label} onSelect={item.onSelect} className={cn(item.danger && 'text-brand-red focus:text-brand-red')}>{item.label}</DropdownMenuItem>,
+        ])}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+  const inlineForm = (title: string, onSubmit: (event: FormEvent<HTMLFormElement>) => void, fields: ReactNode, button: string, note?: string) => (
+    <Card className="p-4">
+      <form onSubmit={onSubmit} className="grid gap-3 sm:flex sm:flex-wrap sm:items-end [&>*]:min-w-0">
+        <p className="w-full text-sm font-semibold">{title}</p>
+        {fields}
+        <Button type="submit"><Plus />{button}</Button>
+        {note && <p className="w-full text-xs text-muted-foreground">{note}</p>}
+      </form>
+    </Card>
+  )
+
   function renderSection(): ReactNode {
-    if (tab === 'users') return <AdminTable rows={rows} empty="New accounts will appear here." columns={[{ key: 'email', label: 'ACCOUNT', render: row => <div className="admin-primary-cell"><b>{row.email}</b><small>{[row.first_name, row.last_name].filter(Boolean).join(' ') || 'Name not provided'}</small></div> }, { key: 'phone_number', label: 'PHONE' }, { key: 'joined_at', label: 'JOINED', render: row => fmtDate(row.joined_at) }, { key: 'is_active', label: 'STATUS', render: row => <StatusPill value={row.is_active ? 'active' : 'suspended'} /> }, { key: 'action', label: '', render: row => <button className={`admin-row-button ${row.is_active ? 'danger' : ''}`} onClick={() => void setUserActive(row)}>{row.is_active ? 'Suspend' : 'Reactivate'}</button> }]} />
-    if (tab === 'sellers') return <AdminTable rows={rows} empty="Seller profiles will appear here." columns={[{ key: 'business_name', label: 'SELLER', render: row => <div className="admin-primary-cell"><b>{row.business_name || `${row.first_name} ${row.last_name}`}</b><small>{row.email}</small></div> }, { key: 'phone_number', label: 'PHONE' }, { key: 'listings_count', label: 'LISTINGS' }, { key: 'is_active', label: 'ACCOUNT', render: row => <StatusPill value={row.is_active ? 'active' : 'suspended'} /> }, { key: 'is_verified', label: 'VERIFICATION', render: row => <StatusPill value={row.is_verified ? 'verified' : 'unverified'} /> }, { key: 'action', label: '', render: row => <button className="admin-row-button" onClick={() => void verifySeller(row)}>{row.is_verified ? 'Remove badge' : 'Verify seller'}</button> }]} />
-    if (tab === 'ads') return <AdminTable rows={rows} empty="No advertisements match this status." columns={[{ key: 'title', label: 'ADVERTISEMENT', render: row => <div className="admin-primary-cell"><b>{row.title}</b><small>{row.seller_email}</small></div> }, { key: 'category_name', label: 'CATEGORY' }, { key: 'county_name', label: 'LOCATION', render: row => [row.city || row.town_name, row.region || row.county_name, row.country].filter(Boolean).join(', ') }, { key: 'price', label: 'PRICE', render: row => formatCurrencyAmount(Number(row.price), row.currency) }, { key: 'status', label: 'STATUS', render: row => <StatusPill value={row.status} /> }, { key: 'action', label: 'REVIEW', render: row => <select className="admin-action-select" value="" onChange={e => e.target.value && void moderateAd(row, e.target.value)}><option value="">Select action</option><option value="active">Approve</option><option value="rejected">Reject</option><option value="suspended">Suspend</option><option value="expired">Expire</option></select> }]} />
-    if (tab === 'categories') return <div className="admin-stack"><form className="admin-inline-form" onSubmit={createCategory}><b>Add category</b><input name="name" placeholder="Category name" required maxLength={100} /><input name="description" placeholder="Short description" maxLength={240} /><input name="icon" placeholder="Lucide icon name" maxLength={50} /><button className="admin-primary-button"><Plus size={15} /> Add</button></form><form className="admin-inline-form subcategory-form" onSubmit={createSubcategory}><b>Add subcategory</b><select name="category" required defaultValue=""><option value="" disabled>Choose category</option>{categories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><input name="name" placeholder="Subcategory name" required maxLength={100} /><button className="admin-secondary-button"><Plus size={15} /> Add subcategory</button></form><AdminTable rows={rows} empty="No categories available." columns={[{ key: 'name', label: 'CATEGORY', render: row => <div className="admin-primary-cell"><b>{row.name}</b><small>{row.subcategories?.length || 0} subcategories</small></div> }, { key: 'description', label: 'DESCRIPTION' }, { key: 'sort_order', label: 'ORDER' }, { key: 'is_active', label: 'STATUS', render: row => <StatusPill value={row.is_active ? 'active' : 'inactive'} /> }, { key: 'actions', label: '', render: row => <div className="admin-action-group"><button className="admin-row-button" onClick={() => void editCategory(row)}>Edit</button><button className="admin-row-button" onClick={() => void toggleActive('/admin/categories/', row, 'Category')}>{row.is_active ? 'Deactivate' : 'Activate'}</button></div> }]} /><h3 className="admin-subheading">Subcategories</h3><AdminTable rows={categories.flatMap(item => (item.subcategories || []).map((sub: Row) => ({ ...sub, category_name: item.name })))} empty="Add subcategories to help sellers describe their listings." columns={[{ key: 'name', label: 'SUBCATEGORY' }, { key: 'category_name', label: 'CATEGORY' }, { key: 'is_active', label: 'STATUS', render: row => <StatusPill value={row.is_active ? 'active' : 'inactive'} /> }, { key: 'action', label: '', render: row => <div className="admin-action-group"><button className="admin-row-button" onClick={() => void editSubcategory(row)}>Rename</button><button className="admin-row-button" onClick={() => void toggleActive('/admin/subcategories/', row, 'Subcategory')}>{row.is_active ? 'Deactivate' : 'Activate'}</button></div> }]} /></div>
-    if (tab === 'locations') return <div className="admin-stack"><form className="admin-inline-form" onSubmit={createCounty}><b>Add county</b><input name="name" placeholder="County name" required maxLength={80} /><button className="admin-primary-button"><Plus size={15} /> Add county</button></form><form className="admin-inline-form" onSubmit={createTown}><b>Add town</b><input name="name" placeholder="Town name" required maxLength={100} /><select name="county" required defaultValue=""><option value="" disabled>Choose county</option>{counties.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><button className="admin-secondary-button"><Plus size={15} /> Add town</button></form><h3 className="admin-subheading">Counties</h3><AdminTable rows={counties} empty="No counties." columns={[{ key: 'name', label: 'COUNTY' }, { key: 'slug', label: 'URL SLUG' }, { key: 'is_active', label: 'STATUS', render: row => <StatusPill value={row.is_active ? 'active' : 'inactive'} /> }, { key: 'action', label: '', render: row => <div className="admin-action-group"><button className="admin-row-button" onClick={() => void editCounty(row)}>Rename</button><button className="admin-row-button" onClick={() => void toggleActive('/admin/counties/', row, 'County')}>{row.is_active ? 'Deactivate' : 'Activate'}</button></div> }]} /><h3 className="admin-subheading">Towns</h3><AdminTable rows={rows} empty="No towns in this county." columns={[{ key: 'name', label: 'TOWN' }, { key: 'county_name', label: 'COUNTY' }, { key: 'slug', label: 'URL SLUG' }, { key: 'is_active', label: 'STATUS', render: row => <StatusPill value={row.is_active ? 'active' : 'inactive'} /> }, { key: 'action', label: '', render: row => <div className="admin-action-group"><button className="admin-row-button" onClick={() => void editTown(row)}>Rename</button><button className="admin-row-button" onClick={() => void toggleActive('/admin/towns/', row, 'Town')}>{row.is_active ? 'Deactivate' : 'Activate'}</button></div> }]} /></div>
-    if (tab === 'reports') return <AdminTable rows={rows} empty="No reports have been submitted." columns={[{ key: 'id', label: 'REPORT' }, { key: 'target_title', label: 'LISTING / ACCOUNT', render: row => <div className="admin-primary-cell"><b>{row.target_title || row.target_user_email || 'Unknown target'}</b><small>Reported by {row.reporter_email}</small></div> }, { key: 'reason', label: 'REASON', render: row => titleCase(row.reason) }, { key: 'details', label: 'DETAILS' }, { key: 'status', label: 'STATUS', render: row => <StatusPill value={row.status} /> }, { key: 'action', label: 'REVIEW', render: row => <select className="admin-action-select" value="" onChange={e => e.target.value && void updateReport(row, e.target.value)}><option value="">Select action</option><option value="reviewing">Reviewing</option><option value="resolved">Resolve</option><option value="dismissed">Dismiss</option></select> }]} />
-    if (tab === 'promotions') return <div className="admin-stack"><form className="admin-inline-form promotion-form" onSubmit={createPromotion}><b>Schedule promotion</b><select name="advertisement_slug" required defaultValue=""><option value="" disabled>Choose active advertisement</option>{activeAds.map(ad => <option key={ad.id} value={ad.slug}>{ad.title} · {ad.seller_email}</option>)}</select><select name="kind" required defaultValue="featured"><option value="featured">Featured</option><option value="sponsored">Sponsored</option><option value="top">Top listing</option><option value="urgent">Urgent</option></select><input name="ends_at" type="datetime-local" required min={new Date().toISOString().slice(0, 16)} /><button className="admin-primary-button"><Plus size={15} /> Schedule</button><small>No payment is processed by this dashboard.</small></form><AdminTable rows={rows} empty="No promotions are scheduled." columns={[{ key: 'advertisement_title', label: 'ADVERTISEMENT', render: row => <div className="admin-primary-cell"><b>{row.advertisement_title}</b><small>{row.advertisement_slug}</small></div> }, { key: 'kind', label: 'PLACEMENT', render: row => titleCase(row.kind) }, { key: 'status', label: 'STATUS', render: row => <StatusPill value={row.status} /> }, { key: 'starts_at', label: 'STARTS', render: row => fmtDate(row.starts_at) }, { key: 'ends_at', label: 'ENDS', render: row => fmtDate(row.ends_at) }, { key: 'action', label: '', render: row => <div className="admin-action-group">{row.status !== 'cancelled' && row.status !== 'ended' && <button className="admin-row-button" onClick={() => void reschedulePromotion(row)}>Reschedule</button>}<button className="admin-row-button danger" disabled={row.status === 'cancelled' || row.status === 'ended'} onClick={() => { if (window.confirm('Cancel this promotion?')) void api.patch(`/admin/promotions/${row.id}/`, { status: 'cancelled' }).then(() => changed('Promotion cancelled.')).catch(reportError) }}>Cancel</button></div> }]} /></div>
+    if (tab === 'users') return <DataTable rows={rows} empty="New accounts will appear here." columns={[
+      { key: 'email', label: 'Account', render: row => <PrimaryCell title={row.email} subtitle={[row.first_name, row.last_name].filter(Boolean).join(' ') || 'Name not provided'} /> },
+      { key: 'phone_number', label: 'Phone' }, { key: 'joined_at', label: 'Joined', render: row => fmtDate(row.joined_at) },
+      { key: 'is_active', label: 'Status', render: row => <StatusPill value={row.is_active ? 'active' : 'suspended'} /> },
+      { key: 'action', label: 'Actions', render: row => rowButton(row.is_active ? 'Suspend' : 'Reactivate', () => void setUserActive(row), row.is_active) },
+    ]} />
+    if (tab === 'sellers') return <DataTable rows={rows} empty="Seller profiles will appear here." columns={[
+      { key: 'business_name', label: 'Seller', render: row => <PrimaryCell title={row.business_name || `${row.first_name} ${row.last_name}`} subtitle={row.email} /> },
+      { key: 'phone_number', label: 'Phone' }, { key: 'listings_count', label: 'Listings' },
+      { key: 'is_active', label: 'Account', render: row => <StatusPill value={row.is_active ? 'active' : 'suspended'} /> },
+      { key: 'is_verified', label: 'Verification', render: row => <StatusPill value={row.is_verified ? 'verified' : 'unverified'} /> },
+      { key: 'action', label: 'Actions', render: row => rowButton(row.is_verified ? 'Remove badge' : 'Verify seller', () => void verifySeller(row), row.is_verified) },
+    ]} />
+    if (tab === 'ads') return <DataTable rows={rows} empty="No advertisements match this status." columns={[
+      { key: 'title', label: 'Advertisement', render: row => <PrimaryCell title={row.status === 'active' ? <Link to={`/ads/${row.slug}`} className="hover:text-primary hover:underline">{row.title}</Link> : row.title} subtitle={row.seller_email} /> },
+      { key: 'category_name', label: 'Category' },
+      { key: 'county_name', label: 'Location', render: row => [row.city || row.town_name, row.region || row.county_name, row.country].filter(Boolean).join(', ') },
+      { key: 'price', label: 'Price', render: row => <span className="font-semibold text-foreground">{formatCurrencyAmount(Number(row.price), row.currency)}</span> },
+      { key: 'status', label: 'Status', render: row => <StatusPill value={row.status} /> },
+      { key: 'action', label: 'Review', render: row => reviewMenu([
+        { label: 'Approve', onSelect: () => void moderateAd(row, 'active') }, { label: 'Mark expired', onSelect: () => void moderateAd(row, 'expired') },
+        { label: 'Reject…', onSelect: () => void moderateAd(row, 'rejected'), danger: true }, { label: 'Suspend…', onSelect: () => void moderateAd(row, 'suspended'), danger: true },
+      ]) },
+    ]} />
+    if (tab === 'categories') return <div className="grid gap-4">
+      {inlineForm('Add category', createCategory, <>
+        <Input name="name" placeholder="Category name" required maxLength={100} className="sm:w-48" />
+        <Input name="description" placeholder="Short description" maxLength={240} className="sm:flex-1" />
+        <Input name="icon" placeholder="Icon name (optional)" maxLength={50} className="sm:w-44" />
+      </>, 'Add category')}
+      {inlineForm('Add subcategory', createSubcategory, <>
+        <select name="category" required defaultValue="" className={cn(selectClass, 'sm:w-56')}><option value="" disabled>Choose category</option>{categories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+        <Input name="name" placeholder="Subcategory name" required maxLength={100} className="sm:flex-1" />
+      </>, 'Add subcategory')}
+      <Card className="overflow-hidden"><DataTable rows={rows} empty="No categories available." columns={[
+        { key: 'name', label: 'Category', render: row => <PrimaryCell title={row.name} subtitle={`${row.subcategories?.length || 0} subcategories`} /> },
+        { key: 'description', label: 'Description' }, { key: 'sort_order', label: 'Order' },
+        { key: 'is_active', label: 'Status', render: row => <StatusPill value={row.is_active ? 'active' : 'inactive'} /> },
+        { key: 'actions', label: 'Actions', render: row => <div className="flex justify-end gap-2">{rowButton('Edit', () => void editCategory(row))}{rowButton(row.is_active ? 'Deactivate' : 'Activate', () => void toggleActive('/admin/categories/', row, 'Category'), row.is_active)}</div> },
+      ]} /></Card>
+      <h3 className="mt-2 font-display text-lg font-bold">Subcategories</h3>
+      <Card className="overflow-hidden"><DataTable rows={categories.flatMap(item => (item.subcategories || []).map((sub: Row) => ({ ...sub, category_name: item.name })))} empty="Add subcategories to help sellers describe their listings." columns={[
+        { key: 'name', label: 'Subcategory', render: row => <span className="font-semibold text-foreground">{row.name}</span> }, { key: 'category_name', label: 'Category' },
+        { key: 'is_active', label: 'Status', render: row => <StatusPill value={row.is_active ? 'active' : 'inactive'} /> },
+        { key: 'action', label: 'Actions', render: row => <div className="flex justify-end gap-2">{rowButton('Rename', () => void rename('/admin/subcategories/', row, 'Subcategory'))}{rowButton(row.is_active ? 'Deactivate' : 'Activate', () => void toggleActive('/admin/subcategories/', row, 'Subcategory'), row.is_active)}</div> },
+      ]} /></Card>
+    </div>
+    if (tab === 'locations') return <div className="grid gap-4">
+      <div className="grid gap-4 lg:grid-cols-2">
+        {inlineForm('Add county', createCounty, <Input name="name" placeholder="County name" required maxLength={80} className="sm:flex-1" />, 'Add county')}
+        {inlineForm('Add town', createTown, <>
+          <Input name="name" placeholder="Town name" required maxLength={100} className="sm:flex-1" />
+          <select name="county" required defaultValue="" className={cn(selectClass, 'sm:w-44')}><option value="" disabled>Choose county</option>{counties.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+        </>, 'Add town')}
+      </div>
+      <h3 className="mt-2 font-display text-lg font-bold">Counties</h3>
+      <Card className="overflow-hidden"><DataTable rows={counties} empty="No counties." columns={[
+        { key: 'name', label: 'County', render: row => <span className="font-semibold text-foreground">{row.name}</span> }, { key: 'slug', label: 'URL slug' },
+        { key: 'is_active', label: 'Status', render: row => <StatusPill value={row.is_active ? 'active' : 'inactive'} /> },
+        { key: 'action', label: 'Actions', render: row => <div className="flex justify-end gap-2">{rowButton('Rename', () => void rename('/admin/counties/', row, 'County'))}{rowButton(row.is_active ? 'Deactivate' : 'Activate', () => void toggleActive('/admin/counties/', row, 'County'), row.is_active)}</div> },
+      ]} /></Card>
+      <h3 className="mt-2 font-display text-lg font-bold">Towns</h3>
+      <Card className="overflow-hidden"><DataTable rows={rows} empty="No towns in this county." columns={[
+        { key: 'name', label: 'Town', render: row => <span className="font-semibold text-foreground">{row.name}</span> }, { key: 'county_name', label: 'County' }, { key: 'slug', label: 'URL slug' },
+        { key: 'is_active', label: 'Status', render: row => <StatusPill value={row.is_active ? 'active' : 'inactive'} /> },
+        { key: 'action', label: 'Actions', render: row => <div className="flex justify-end gap-2">{rowButton('Rename', () => void rename('/admin/towns/', row, 'Town'))}{rowButton(row.is_active ? 'Deactivate' : 'Activate', () => void toggleActive('/admin/towns/', row, 'Town'), row.is_active)}</div> },
+      ]} /></Card>
+    </div>
+    if (tab === 'reports') return <DataTable rows={rows} empty="No reports have been submitted." columns={[
+      { key: 'id', label: '#' },
+      { key: 'target_title', label: 'Listing / account', render: row => <PrimaryCell title={row.target_title || row.target_user_email || 'Unknown target'} subtitle={`Reported by ${row.reporter_email}`} /> },
+      { key: 'reason', label: 'Reason', render: row => titleCase(row.reason) },
+      { key: 'details', label: 'Details', render: row => <span className="line-clamp-2 max-w-xs">{row.details || '—'}</span> },
+      { key: 'status', label: 'Status', render: row => <StatusPill value={row.status} /> },
+      { key: 'action', label: 'Review', render: row => reviewMenu([
+        { label: 'Mark reviewing', onSelect: () => void updateReport(row, 'reviewing') }, { label: 'Resolve…', onSelect: () => void updateReport(row, 'resolved') },
+        { label: 'Dismiss…', onSelect: () => void updateReport(row, 'dismissed'), danger: true },
+      ]) },
+    ]} />
+    if (tab === 'promotions') return <div className="grid gap-4">
+      {inlineForm('Schedule a promotion', createPromotion, <>
+        <select name="advertisement_slug" required defaultValue="" className={cn(selectClass, 'sm:min-w-64 sm:flex-1')}><option value="" disabled>Choose a live advertisement</option>{activeAds.map(ad => <option key={ad.id} value={ad.slug}>{ad.title} · {ad.seller_email}</option>)}</select>
+        <select name="kind" required defaultValue="featured" className={cn(selectClass, 'sm:w-40')}><option value="featured">Featured</option><option value="sponsored">Sponsored</option><option value="top">Top listing</option><option value="urgent">Urgent</option></select>
+        <Input name="ends_at" type="datetime-local" required min={new Date().toISOString().slice(0, 16)} className="sm:w-56" aria-label="Promotion ends" />
+      </>, 'Schedule', 'No payment is processed by this dashboard.')}
+      <Card className="overflow-hidden"><DataTable rows={rows} empty="No promotions are scheduled." columns={[
+        { key: 'advertisement_title', label: 'Advertisement', render: row => <PrimaryCell title={row.advertisement_title} subtitle={row.advertisement_slug} /> },
+        { key: 'kind', label: 'Placement', render: row => titleCase(row.kind) },
+        { key: 'status', label: 'Status', render: row => <StatusPill value={row.status} /> },
+        { key: 'starts_at', label: 'Starts', render: row => fmtDate(row.starts_at) }, { key: 'ends_at', label: 'Ends', render: row => fmtDate(row.ends_at) },
+        { key: 'action', label: 'Actions', render: row => {
+          const finished = row.status === 'cancelled' || row.status === 'ended'
+          return <div className="flex justify-end gap-2">{!finished && rowButton('Reschedule', () => void reschedulePromotion(row))}{rowButton('Cancel', () => void cancelPromotion(row), true, finished)}</div>
+        } },
+      ]} /></Card>
+    </div>
     return null
   }
-}
 
-function Overview({ stats, onSelect }: { stats: Stats | null; onSelect: (tab: Tab) => void }) {
-  if (!stats) return <div className="admin-empty">Could not load marketplace statistics.</div>
-  const adStates = [{ label: 'Active', value: stats.active_ads, color: 'active' }, { label: 'Pending review', value: stats.pending_ads, color: 'pending' }, { label: 'Sold', value: stats.sold_ads, color: 'sold' }, { label: 'Rejected', value: stats.rejected_ads, color: 'rejected' }, { label: 'Expired', value: stats.expired_ads, color: 'expired' }, { label: 'Suspended', value: stats.suspended_ads, color: 'suspended' }]
-  const totalAds = adStates.reduce((sum, state) => sum + state.value, 0)
-  return <><div className="admin-stat-grid"><StatCard label="Accounts" value={stats.users} icon={Users} tone="green" /><StatCard label="Seller profiles" value={stats.sellers} icon={Store} tone="blue" /><StatCard label="Active advertisements" value={stats.active_ads} icon={Package} tone="purple" /><StatCard label="Awaiting review" value={stats.pending_ads} icon={ClipboardList} tone="amber" /><StatCard label="Open reports" value={stats.open_reports} icon={Flag} tone="red" /><StatCard label="Suspended accounts" value={stats.suspended_users} icon={ShieldAlert} tone="slate" /><StatCard label="Sold products" value={stats.sold_ads} icon={Check} tone="teal" /><StatCard label="Live promotions" value={stats.active_promotions} icon={Megaphone} tone="orange" /></div><div className="admin-overview-grid"><div className="admin-overview-card"><div className="admin-card-heading"><div><b>Advertisement health</b><small>{totalAds.toLocaleString()} listings across all statuses</small></div><button className="admin-link-button" onClick={() => onSelect('ads')}>Manage listings <ChevronRight size={14} /></button></div><div className="admin-status-bars">{adStates.map(state => <div className="admin-status-row" key={state.label}><span>{state.label}</span><div className="admin-meter"><i className={`meter-${state.color}`} style={{ width: `${totalAds ? Math.max(state.value ? 3 : 0, state.value / totalAds * 100) : 0}%` }} /></div><b>{state.value.toLocaleString()}</b></div>)}</div></div><div className="admin-overview-card"><div className="admin-card-heading"><div><b>Recent listings</b><small>Latest advertisements added</small></div><button className="admin-link-button" onClick={() => onSelect('ads')}>View all <ChevronRight size={14} /></button></div><div className="admin-recent-list">{stats.recent_ads.length ? stats.recent_ads.map(ad => <div className="admin-recent-row" key={ad.id}><span className={`admin-mini-status status-${ad.status}`} /><div><b>{ad.title}</b><small>{ad.seller__email} · {fmtDate(ad.created_at)}</small></div><StatusPill value={ad.status} /></div>) : <p className="admin-quiet-empty">No listings have been posted yet.</p>}</div></div><div className="admin-overview-card"><div className="admin-card-heading"><div><b>Reports needing attention</b><small>{stats.open_reports} open or under review</small></div><button className="admin-link-button" onClick={() => onSelect('reports')}>Review queue <ChevronRight size={14} /></button></div><div className="admin-recent-list">{stats.recent_reports.length ? stats.recent_reports.map(report => <div className="admin-recent-row" key={report.id}><span className="admin-mini-status status-open" /><div><b>{report.advertisement__title || report.reported_user__email || `Report #${report.id}`}</b><small>{titleCase(report.reason)} · {fmtDate(report.created_at)}</small></div><StatusPill value={report.status} /></div>) : <p className="admin-quiet-empty">No reports are waiting right now.</p>}</div></div><button className="admin-work-card" onClick={() => onSelect('users')}><span className="admin-work-icon slate"><ShieldCheck size={18} /></span><div><b>Account management</b><small>Review member access, activity, and seller verification</small></div><ChevronRight size={17} /></button></div></>
+  const tablesInCards = tab === 'categories' || tab === 'locations' || tab === 'promotions'
+
+  return (
+    <div className="min-h-dvh bg-muted/40 text-foreground lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
+      {/* Sidebar (desktop) */}
+      <aside className="hidden border-r-[3px] border-brand-red bg-primary text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col dark:bg-card">
+        <Link to="/" className="flex items-center gap-2.5 px-5 py-5" aria-label="MarketDay Liberia home">
+          <span className="grid size-9 place-items-center rounded-xl bg-brand-red ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
+          <span className="font-display leading-none"><span className="block text-[19px] font-extrabold">marketday</span><span className="mt-0.5 block text-[10px] font-bold tracking-[0.2em] text-white/75">LIBERIA</span></span>
+        </Link>
+        <p className="px-5 pb-2 text-[11px] font-bold uppercase tracking-[0.15em] text-white/60">Administration</p>
+        <nav aria-label="Admin sections" className="grid gap-0.5 px-3">
+          {tabs.map(item => {
+            const Icon = item.icon, selected = tab === item.id
+            return (
+              <button key={item.id} type="button" onClick={() => selectTab(item.id)} aria-current={selected ? 'page' : undefined}
+                className={cn('flex h-10 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white', selected ? 'bg-white text-primary shadow-sm dark:bg-primary dark:text-white' : 'text-white/85 hover:bg-white/10 hover:text-white')}>
+                <Icon className="size-4" aria-hidden="true" /><span className="flex-1 text-left">{item.label}</span>
+                {item.id === 'reports' && stats?.open_reports ? <span className="grid min-w-5 place-items-center rounded-full bg-brand-red px-1.5 text-[11px] text-white">{stats.open_reports}</span> : null}
+              </button>
+            )
+          })}
+        </nav>
+        <div className="mt-auto border-t border-white/15 p-4">
+          <div className="flex items-center gap-3">
+            <Avatar className="size-9"><AvatarFallback className="bg-white text-primary">{initials}</AvatarFallback></Avatar>
+            <div className="min-w-0"><p className="truncate text-sm font-semibold">{profile?.first_name || 'Administrator'}</p><p className="text-xs text-white/70">Staff account</p></div>
+          </div>
+          <Link to="/account" className="mt-3 block text-xs font-semibold text-white/80 hover:text-white">Account settings</Link>
+        </div>
+      </aside>
+
+      <div className="min-w-0">
+        {/* Top bar */}
+        <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur">
+          <div className="flex h-14 items-center gap-2 px-4 sm:px-6">
+            <Link to="/" className="mr-1 grid size-8 place-items-center rounded-lg bg-brand-red text-white lg:hidden" aria-label="MarketDay home"><Store className="size-4" aria-hidden="true" /></Link>
+            <p className="flex min-w-0 items-center gap-1.5 text-sm"><span className="text-muted-foreground">Admin</span><ChevronRight className="size-3.5 text-muted-foreground" aria-hidden="true" /><b className="truncate">{current.label}</b></p>
+            <div className="ml-auto flex items-center gap-1">
+              <Button variant="ghost" size="icon-sm" onClick={toggleTheme} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}><ThemeIcon /></Button>
+              <Button asChild variant="outline" size="sm"><Link to="/"><ExternalLink /><span className="max-sm:sr-only">Marketplace</span></Link></Button>
+            </div>
+          </div>
+          {/* Section tabs (phones and tablets) */}
+          <nav aria-label="Admin sections" className="flex gap-1 overflow-x-auto px-3 pb-2 lg:hidden">
+            {tabs.map(item => {
+              const Icon = item.icon, selected = tab === item.id
+              return <button key={item.id} type="button" onClick={() => selectTab(item.id)} aria-current={selected ? 'page' : undefined}
+                className={cn('flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition-colors', selected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground')}>
+                <Icon className="size-4" aria-hidden="true" />{item.label}
+                {item.id === 'reports' && stats?.open_reports ? <span className="grid min-w-5 place-items-center rounded-full bg-brand-red px-1.5 text-[11px] text-white">{stats.open_reports}</span> : null}
+              </button>
+            })}
+          </nav>
+        </header>
+
+        <main className="mx-auto max-w-6xl p-4 sm:p-6">
+          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-brand-red">MarketDay Liberia</p>
+              <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">{tab === 'overview' ? 'Marketplace overview' : current.label}</h1>
+              <p className="text-sm text-muted-foreground">{sectionDescription[tab]}</p>
+            </div>
+            {tab !== 'overview' && (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {filterOptions[tab] && <select aria-label="Filter" value={filter} onChange={e => { setFilter(e.target.value); setPage(1) }} className={cn(selectClass, 'sm:w-44')}>{filterOptions[tab]!.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>}
+                <div className="relative sm:w-60"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" /><Input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder={`Search ${current.label.toLowerCase()}…`} aria-label={`Search ${current.label.toLowerCase()}`} className="h-10 pl-9" /></div>
+              </div>
+            )}
+          </div>
+          {error && <Alert variant="error" className="mb-4">{error}</Alert>}
+          {loading ? (
+            <div className="grid h-60 place-items-center"><Loader2 className="size-7 animate-spin text-primary" aria-label="Loading" /></div>
+          ) : tab === 'overview' ? (
+            <Overview stats={stats} onSelect={(next, nextFilter) => selectTab(next, nextFilter)} />
+          ) : (
+            <>
+              {tablesInCards ? renderSection() : <Card className="overflow-hidden">{renderSection()}</Card>}
+              {tab !== 'categories' && pageInfo.count > 20 && (
+                <div className="mt-4 flex items-center justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">{Math.min((page - 1) * 20 + 1, pageInfo.count)}–{Math.min(page * 20, pageInfo.count)} of {pageInfo.count}</span>
+                  <div className="flex gap-2"><Button variant="outline" size="sm" disabled={!pageInfo.previous} onClick={() => setPage(p => Math.max(1, p - 1))}>Previous</Button><Button variant="outline" size="sm" disabled={!pageInfo.next} onClick={() => setPage(p => p + 1)}>Next</Button></div>
+                </div>
+              )}
+            </>
+          )}
+        </main>
+      </div>
+      {dialog}
+    </div>
+  )
 }
-function StatusPill({ value }: { value: string }) { return <span className={`admin-status status-${value}`}>{titleCase(value)}</span> }
-function fmtDate(value?: string) { return value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—' }
-function sectionDescription(tab: Tab) { return ({ users: 'Review member accounts and control access.', sellers: 'Manage seller profiles and verification badges.', ads: 'Review, approve, reject, or suspend advertisements.', categories: 'Maintain the categories sellers use for listings.', locations: 'Manage the Liberia counties and their towns.', reports: 'Review user-submitted reports and record outcomes.', promotions: 'Schedule listing placements without processing payments.', overview: '' })[tab] }
