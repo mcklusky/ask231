@@ -1,11 +1,11 @@
-from io import BytesIO
+from io import BytesIO, StringIO
 import tempfile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from PIL import Image
 from django.test import TestCase
 from rest_framework.test import APIClient
-from .models import Advertisement, Category, County, SubCategory, Town
+from .models import Advertisement, AdvertisementImage, Category, County, SubCategory, Town
 from .models import Promotion, Report
 from accounts.models import User
 from django.core.cache import cache
@@ -267,3 +267,85 @@ class VerificationAndReportingTests(TestCase):
         self.client.force_authenticate(self.seller)
         self.client.post("/api/auth/email/verify/")
         self.assertEqual(len(mail.outbox), 5)  # already verified: no email sent
+
+
+class ListingPhotoOptimisationTests(TestCase):
+    """Uploaded photos are resized to WebP, get a thumbnail, are upright, and lose all metadata."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.seller = User.objects.create_user(email="photos@marketday.test", password="StrongPass!2026", email_verified_at=dj_timezone.now())
+        self.client.force_authenticate(self.seller)
+        category = Category.objects.get(name="Vehicles")
+        county = County.objects.get(slug="montserrado")
+        self.payload = {"title": "Photo test car", "description": "Testing photo processing.", "price": "1000.00", "currency": "USD", "condition": "used",
+                        "phone_number": "+231 770 123 456", "category_id": category.id, "subcategory_id": SubCategory.objects.filter(category=category).first().id,
+                        "county_id": county.id, "town_id": Town.objects.get(county=county, slug="monrovia").id}
+        self.media = tempfile.TemporaryDirectory()
+        self.override = override_settings(MEDIA_ROOT=self.media.name)
+        self.override.enable()
+
+    def tearDown(self):
+        self.override.disable()
+        self.media.cleanup()
+
+    @staticmethod
+    def jpeg(size=(3000, 2000), orientation=None, name="phone.jpg"):
+        image = Image.new("RGB", size, (200, 30, 40))
+        exif = image.getexif()
+        exif[0x010F] = "TestCam"  # camera make: must not survive
+        if orientation:
+            exif[0x0112] = orientation
+        buffer = BytesIO(); image.save(buffer, format="JPEG", exif=exif.tobytes(), quality=90)
+        return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/jpeg")
+
+    def upload(self, *files):
+        response = self.client.post("/api/market/advertisements/", {**self.payload, "image_uploads": list(files)}, format="multipart")
+        return response
+
+    def test_large_photo_is_resized_upright_webp_with_thumbnail_and_no_metadata(self):
+        response = self.upload(self.jpeg(orientation=6))  # 3000x2000 stored sideways; displays as 2000x3000
+        self.assertEqual(response.status_code, 201, response.data)
+        photo = Advertisement.objects.get(slug=response.data["slug"]).images.get()
+        with Image.open(photo.image.path) as display:
+            self.assertEqual(display.format, "WEBP")
+            self.assertEqual(display.size, (1067, 1600))  # portrait: orientation applied, longest side 1600
+            self.assertEqual(len(display.getexif()), 0)
+        with Image.open(photo.thumbnail.path) as thumb:
+            self.assertEqual(thumb.format, "WEBP")
+            self.assertLessEqual(max(thumb.size), 480)
+        self.assertEqual((photo.width, photo.height), (1067, 1600))
+        data = response.data["images"][0]
+        self.assertTrue(data["thumbnail_url"].endswith(".webp"))
+        self.assertIn("/thumbs/", data["thumbnail_url"])
+
+    def test_small_photo_is_not_upscaled_and_transparent_png_gets_white_background(self):
+        png = BytesIO(); Image.new("RGBA", (300, 200), (0, 0, 0, 0)).save(png, format="PNG")
+        response = self.upload(SimpleUploadedFile("logo.png", png.getvalue(), content_type="image/png"))
+        self.assertEqual(response.status_code, 201, response.data)
+        photo = Advertisement.objects.get(slug=response.data["slug"]).images.get()
+        with Image.open(photo.image.path) as display:
+            self.assertEqual(display.size, (300, 200))
+            self.assertEqual(display.convert("RGB").getpixel((10, 10)), (255, 255, 255))
+
+    def test_corrupt_photo_is_rejected_and_no_ad_is_created(self):
+        broken = SimpleUploadedFile("broken.jpg", b"\xff\xd8\xff not really a jpeg", content_type="image/jpeg")
+        response = self.upload(broken)
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Advertisement.objects.filter(title="Photo test car").exists())
+
+    def test_command_converts_existing_photos_and_removes_originals(self):
+        from django.core.management import call_command
+        import os
+        ad = Advertisement.objects.create(seller=self.seller, status=Advertisement.Status.ACTIVE, category=Category.objects.get(name="Vehicles"),
+                                          subcategory=SubCategory.objects.filter(category__name="Vehicles").first(), county=County.objects.get(slug="montserrado"),
+                                          town=Town.objects.get(slug="monrovia"), title="Old photo ad", description="x", price="5", currency="USD", condition="used", phone_number="+231 770 123 456")
+        legacy = AdvertisementImage.objects.create(advertisement=ad, image=self.jpeg(size=(2400, 1800), name="legacy.jpg"))
+        original_path = legacy.image.path
+        call_command("optimize_listing_photos", stdout=StringIO())
+        legacy.refresh_from_db()
+        self.assertTrue(legacy.thumbnail)
+        self.assertTrue(legacy.image.name.endswith(".webp"))
+        self.assertFalse(os.path.exists(original_path))
+        with Image.open(legacy.image.path) as display:
+            self.assertEqual(display.size, (1600, 1200))

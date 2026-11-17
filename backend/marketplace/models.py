@@ -198,6 +198,11 @@ def advertisement_image_path(instance, filename):
     return f"advertisements/{instance.advertisement_id}/{uuid.uuid4().hex}{extension}"
 
 
+def advertisement_thumbnail_path(instance, filename):
+    extension = os.path.splitext(filename)[1].lower()[:8]
+    return f"advertisements/{instance.advertisement_id}/thumbs/{uuid.uuid4().hex}{extension}"
+
+
 def validate_image_size(file):
     if file.size > 5 * 1024 * 1024:
         raise ValidationError("Each image must be 5 MB or smaller.")
@@ -206,6 +211,10 @@ def validate_image_size(file):
 class AdvertisementImage(models.Model):
     advertisement = models.ForeignKey(Advertisement, on_delete=models.CASCADE, related_name="images")
     image = models.ImageField(upload_to=advertisement_image_path, validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp"]), validate_image_size])
+    # Small copy for cards, inboxes and galleries (see marketplace/images.py).
+    thumbnail = models.ImageField(upload_to=advertisement_thumbnail_path, blank=True)
+    width = models.PositiveIntegerField(null=True, blank=True)
+    height = models.PositiveIntegerField(null=True, blank=True)
     alt_text = models.CharField(max_length=140, blank=True)
     sort_order = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -216,10 +225,18 @@ class AdvertisementImage(models.Model):
     def __str__(self):
         return f"Image for {self.advertisement.title}"
 
+    @classmethod
+    def from_processed(cls, advertisement, processed, sort_order=0, alt_text=""):
+        """Build (unsaved) an image from marketplace.images.process_listing_photo() output."""
+        return cls(advertisement=advertisement, image=processed.display, thumbnail=processed.thumbnail,
+                   width=processed.width, height=processed.height, sort_order=sort_order, alt_text=alt_text)
+
 @receiver(pre_delete, sender=AdvertisementImage)
 def remove_advertisement_image_file(sender, instance, **kwargs):
     if instance.image:
         instance.image.delete(save=False)
+    if instance.thumbnail:
+        instance.thumbnail.delete(save=False)
 
 
 class Report(models.Model):

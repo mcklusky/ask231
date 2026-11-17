@@ -15,7 +15,8 @@ export const liberianCounties: County[] = [
   { id: 15, name: 'Sinoe', slug: 'sinoe' },
 ]
 export type Town = { id: number; name: string; slug: string; county: number; county_name: string }
-export type AdImage = { id: number; image_url: string; alt_text: string; sort_order: number; created_at: string }
+/** image_url: display copy (max 1600px WebP). thumbnail_url: small copy (max 480px) for cards and galleries. */
+export type AdImage = { id: number; image_url: string; thumbnail_url: string; width: number | null; height: number | null; alt_text: string; sort_order: number; created_at: string }
 export type Advertisement = {
   id: number; slug: string; title: string; description: string; price: string; currency: string; condition: 'new' | 'used'; status: 'pending' | 'active' | 'rejected' | 'sold' | 'expired' | 'suspended'; rejection_reason: string; phone_number: string; whatsapp_number: string; views_count: number;
   country: string; region: string; city: string; category: Category; subcategory: SubCategory; county: County | null; town: Town | null; images: AdImage[]; seller_name: string; seller_verified: boolean; created_at: string; updated_at: string; expires_at: string | null;

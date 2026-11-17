@@ -25,14 +25,14 @@ export const demoProducts = [
 ]
 export function formatPrice(ad: Advertisement) { return formatCurrencyAmount(Number(ad.price), ad.currency) }
 export function ListingCard({ ad }: { ad: Advertisement }) {
-  const image = ad.images[0]?.image_url
+  const image = ad.images[0]?.thumbnail_url || ad.images[0]?.image_url
   const CategoryIcon = categoryIllustrations[ad.category.slug] || Package
   return (
     <Link to={`/ads/${ad.slug}`} className="group block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
       <Card className="flex h-full flex-col overflow-hidden transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:shadow-lg">
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
           {image
-            ? <img src={image} alt={ad.images[0]?.alt_text || ad.title} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" />
+            ? <img src={image} alt={ad.images[0]?.alt_text || ad.title} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" />
             : <div className="grid h-full place-items-center text-muted-foreground"><CategoryIcon className="size-10" strokeWidth={1.5} aria-hidden="true" /></div>}
           <Badge variant="overlay" className="absolute left-2.5 top-2.5">{ad.condition === 'new' ? 'New' : 'Used'}</Badge>
           {ad.seller_verified && <Badge variant="default" className="absolute right-2.5 top-2.5 gap-1 shadow-sm"><BadgeCheck aria-hidden="true" />Verified</Badge>}

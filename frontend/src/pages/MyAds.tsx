@@ -74,7 +74,7 @@ export default function MyAds() {
                   <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
                     <div className="flex min-w-0 flex-1 gap-4">
                       <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted text-muted-foreground sm:size-24">
-                        {ad.images[0] ? <img src={ad.images[0].image_url} alt={ad.images[0].alt_text || ad.title} className="h-full w-full object-cover" /> : <ImagePlus className="size-6" aria-hidden="true" />}
+                        {ad.images[0] ? <img src={ad.images[0].thumbnail_url || ad.images[0].image_url} loading="lazy" decoding="async" alt={ad.images[0].alt_text || ad.title} className="h-full w-full object-cover" /> : <ImagePlus className="size-6" aria-hidden="true" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2"><Badge variant={status.variant}>{status.label}</Badge><span className="text-xs text-muted-foreground">{formatPostedDate(ad.created_at)}</span></div>

@@ -1,5 +1,7 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework.fields import IntegerField
+from .images import process_listing_photo
 from .models import Advertisement, AdvertisementImage, Category, County, SubCategory, Town
 
 
@@ -36,13 +38,21 @@ class TownSerializer(serializers.ModelSerializer):
 
 class AdvertisementImageSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
+    thumbnail_url = serializers.SerializerMethodField()
     class Meta:
         model = AdvertisementImage
-        fields = ["id", "image_url", "alt_text", "sort_order", "created_at"]
+        fields = ["id", "image_url", "thumbnail_url", "width", "height", "alt_text", "sort_order", "created_at"]
+
+    def _absolute(self, url):
+        request = self.context.get("request")
+        return request.build_absolute_uri(url) if request else url
 
     def get_image_url(self, obj):
-        request = self.context.get("request")
-        return request.build_absolute_uri(obj.image.url) if request else obj.image.url
+        return self._absolute(obj.image.url)
+
+    def get_thumbnail_url(self, obj):
+        # Photos uploaded before thumbnails existed fall back to the full image.
+        return self._absolute((obj.thumbnail or obj.image).url)
 
 
 class AdvertisementSerializer(serializers.ModelSerializer):
@@ -84,7 +94,14 @@ class AdvertisementSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Each image must be 5 MB or smaller.")
             if file.name.rsplit(".", 1)[-1].lower() not in {"jpg", "jpeg", "png", "webp"}:
                 raise serializers.ValidationError("Images must be JPG, PNG, or WebP files.")
-        return files
+        # Resize, re-encode as WebP and strip metadata now, so a bad photo fails before anything is saved.
+        processed = []
+        for file in files:
+            try:
+                processed.append(process_listing_photo(file))
+            except DjangoValidationError as error:
+                raise serializers.ValidationError(f"{file.name}: {error.messages[0]}")
+        return processed
 
     def validate(self, attrs):
         category = attrs.get("category", getattr(self.instance, "category", None))
@@ -114,7 +131,7 @@ class AdvertisementSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         uploads = validated_data.pop("image_uploads", [])
         ad = Advertisement.objects.create(seller=self.context["request"].user, **validated_data)
-        AdvertisementImage.objects.bulk_create([AdvertisementImage(advertisement=ad, image=file, sort_order=index) for index, file in enumerate(uploads)])
+        AdvertisementImage.objects.bulk_create([AdvertisementImage.from_processed(ad, photo, sort_order=index) for index, photo in enumerate(uploads)])
         return ad
 
     def update(self, instance, validated_data):
@@ -126,5 +143,5 @@ class AdvertisementSerializer(serializers.ModelSerializer):
         instance.rejection_reason = ""
         instance.save()
         offset = instance.images.count()
-        AdvertisementImage.objects.bulk_create([AdvertisementImage(advertisement=instance, image=file, sort_order=offset + index) for index, file in enumerate(uploads)])
+        AdvertisementImage.objects.bulk_create([AdvertisementImage.from_processed(instance, photo, sort_order=offset + index) for index, photo in enumerate(uploads)])
         return instance

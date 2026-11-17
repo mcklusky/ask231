@@ -52,7 +52,7 @@ The exact infrastructure template and deployment commands should be selected aft
 
 1. Choose the AWS region and register/choose the domain. Create ECR, the VPC/subnets/security groups, Aurora PostgreSQL, private S3 buckets, CloudFront, SES identity, and Secrets Manager secrets.
 2. Build and push the backend image from `backend/` to ECR. ECS tasks use the task execution role to pull from ECR and write logs; the application task role grants access to the media bucket.
-3. Run `python manage.py migrate` once as a one-off ECS task using the same image, network, and injected database settings. Create a staff account through a controlled one-off task.
+3. Run `python manage.py migrate` once as a one-off ECS task using the same image, network, and injected database settings. Create a staff account through a controlled one-off task. If photos were imported from an older copy of the site, also run `python manage.py optimize_listing_photos` (try `--dry-run` first): it resizes them to WebP, creates thumbnails and strips location metadata. New uploads are processed automatically.
 4. Set production secrets/environment values in ECS: secret key, database settings, S3 bucket/region, CloudFront media hostname, frontend URL, allowed hosts, email settings, and forwarded-protocol trust.
 5. Build the frontend with `VITE_API_URL=/api`, sync `frontend/dist/` to its private S3 bucket, and invalidate CloudFront after releases.
 6. Confirm CloudFront path behaviors, API caching disabled, TLS, health checks, signup/email delivery, images, and staff access before inviting users.

@@ -198,7 +198,7 @@ export default function AdForm() {
           </label>
           {photoCount > 0 && (
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5" aria-label="Selected photos">
-              {[...keptExisting.map(image => ({ key: `e${image.id}`, src: image.image_url, alt: image.alt_text || 'Photo', remove: () => setRemoveIds(ids => [...ids, image.id]) })),
+              {[...keptExisting.map(image => ({ key: `e${image.id}`, src: image.thumbnail_url || image.image_url, alt: image.alt_text || 'Photo', remove: () => setRemoveIds(ids => [...ids, image.id]) })),
                 ...files.map((file, index) => ({ key: `f${index}-${file.name}`, src: previews[index], alt: file.name, remove: () => setFiles(current => current.filter((_, i) => i !== index)) }))]
                 .map((photo, index) => (
                   <li key={photo.key} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted">

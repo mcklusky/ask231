@@ -41,7 +41,8 @@ class ConversationSerializer(serializers.ModelSerializer):
             return None
         try:
             request = self.context.get("request")
-            return request.build_absolute_uri(image.image.url) if request else image.image.url
+            url = (image.thumbnail or image.image).url  # small copy for the inbox
+            return request.build_absolute_uri(url) if request else url
         except ValueError:
             return None
 
