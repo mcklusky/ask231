@@ -8,7 +8,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -19,6 +19,8 @@ from .serializers import EmailTokenSerializer, PasswordResetConfirmSerializer, P
 User = get_user_model()
 class AuthThrottle(AnonRateThrottle):
     scope = "auth"
+class VerificationEmailThrottle(UserRateThrottle):
+    scope = "verification"
 class ThrottledTokenObtainPairView(TokenObtainPairView):
     throttle_classes = [AuthThrottle]
 class ThrottledTokenRefreshView(TokenRefreshView):
@@ -86,7 +88,10 @@ class PasswordResetConfirmView(APIView):
         return Response({"detail": "Password updated. You can now sign in."})
 class VerifyEmailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [VerificationEmailThrottle]
     def post(self, request):
+        if request.user.email_verified_at:
+            return Response({"detail": "Your email address is already verified."})
         token = signing.dumps({"user_id": request.user.pk}, salt="email-verification")
         link = f"{settings.FRONTEND_URL}/verify-email?token={token}"
         send_mail("Verify your Liberia Buy & Sell email", f"Verify your email address: {link}", settings.DEFAULT_FROM_EMAIL, [request.user.email])

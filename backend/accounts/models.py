@@ -6,6 +6,11 @@ COUNTIES = [(name, name) for name in COUNTY_NAMES]
 
 class UserManager(BaseUserManager):
     use_in_migrations = True
+    def get_by_natural_key(self, username):
+        # Emails are stored lowercase; match sign-ins regardless of capitalisation
+        # (phones and browsers often capitalise the first letter). Used by both the
+        # API sign-in and the Django admin login.
+        return self.get(**{f"{self.model.USERNAME_FIELD}__iexact": username})
     def _create_user(self, email, password, **extra_fields):
         if not email:
             raise ValueError("An email address is required")

@@ -8,7 +8,8 @@ from django.core.exceptions import ImproperlyConfigured
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-change-me-before-deployment")
-DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in {"true", "1", "yes", "on", "debug"}
+# Debug is off unless explicitly enabled (local .env sets DJANGO_DEBUG=True).
+DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in {"true", "1", "yes", "on", "debug"}
 ALLOWED_HOSTS = [x.strip() for x in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if x.strip()]
 if not DEBUG and (SECRET_KEY == "dev-only-change-me-before-deployment" or not ALLOWED_HOSTS):
     raise ImproperlyConfigured("Set DJANGO_SECRET_KEY and ALLOWED_HOSTS for production.")
@@ -77,7 +78,7 @@ if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend":
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:5173")
 CORS_ALLOWED_ORIGINS = [x.strip() for x in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if x.strip()]
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if x.strip()]
-REST_FRAMEWORK = {"DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework_simplejwt.authentication.JWTAuthentication"], "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticatedOrReadOnly"], "DEFAULT_PAGINATION_CLASS": "config.pagination.MarketplacePagination", "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle", "rest_framework.throttling.UserRateThrottle"], "DEFAULT_THROTTLE_RATES": {"anon": "120/hour", "user": "1200/hour", "auth": "10/hour"}}
+REST_FRAMEWORK = {"DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework_simplejwt.authentication.JWTAuthentication"], "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticatedOrReadOnly"], "DEFAULT_PAGINATION_CLASS": "config.pagination.MarketplacePagination", "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle", "rest_framework.throttling.UserRateThrottle"], "DEFAULT_THROTTLE_RATES": {"anon": "120/hour", "user": "1200/hour", "auth": "10/hour", "verification": "5/hour", "reports": "20/hour"}}
 SIMPLE_JWT = {"ACCESS_TOKEN_LIFETIME": timedelta(minutes=15), "REFRESH_TOKEN_LIFETIME": timedelta(days=7), "ROTATE_REFRESH_TOKENS": True, "BLACKLIST_AFTER_ROTATION": True, "AUTH_HEADER_TYPES": ("Bearer",)}
 if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True

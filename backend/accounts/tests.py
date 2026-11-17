@@ -45,3 +45,14 @@ class AuthenticationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         user.refresh_from_db()
         self.assertIsNotNone(user.email_verified_at)
+
+
+class CaseInsensitiveSignInTests(TestCase):
+    def test_sign_in_ignores_email_capitalisation(self):
+        User.objects.create_user(email="mixed@example.com", password="StrongPass!2026", is_staff=True)
+        client = APIClient()
+        response = client.post("/api/auth/token/", {"email": "Mixed@Example.com", "password": "StrongPass!2026"}, format="json")
+        self.assertEqual(response.status_code, 200, response.data)
+        # Django admin login uses the same lookup
+        self.assertTrue(self.client.login(username="MIXED@example.com", password="StrongPass!2026"))
+        self.assertFalse(self.client.login(username="mixed@example.com", password="wrong-password"))

@@ -4,6 +4,7 @@ from django.utils import timezone
 from rest_framework import decorators, filters, permissions, response, status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import JSONParser
+from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 from accounts.models import SellerProfile
 from .admin_serializers import AdminAdvertisementSerializer, AdminCategorySerializer, AdminCountySerializer, AdminPromotionSerializer, AdminReportSerializer, AdminSellerSerializer, AdminSubCategorySerializer, AdminTownSerializer, AdminUserSerializer, ReportCreateSerializer
@@ -230,9 +231,13 @@ class AdminPromotionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
+class ReportThrottle(UserRateThrottle):
+    scope = "reports"
+
 class ReportCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [JSONParser]
+    throttle_classes = [ReportThrottle]
     def post(self, request):
         serializer = ReportCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)

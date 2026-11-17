@@ -6,7 +6,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Advertisement, AdvertisementImage, Category, County, Favorite, Promotion, SubCategory, Town
-from .permissions import IsOwnerOrActiveReadOnly, IsStaffOrReadOnly
+from .permissions import HasVerifiedEmail, IsOwnerOrActiveReadOnly, IsStaffOrReadOnly
 from .serializers import AdvertisementImageSerializer, AdvertisementSerializer, CategorySerializer, CountySerializer, TownSerializer
 
 
@@ -52,6 +52,10 @@ class AdvertisementListCreateView(generics.ListCreateAPIView):
     serializer_class = AdvertisementSerializer
     permission_classes = [IsOwnerOrActiveReadOnly]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsOwnerOrActiveReadOnly(), HasVerifiedEmail()]
+        return super().get_permissions()
     def get_queryset(self):
         queryset = Advertisement.objects.select_related("seller", "seller__seller_profile", "category", "subcategory", "county", "town", "town__county").prefetch_related("images").filter(status=Advertisement.Status.ACTIVE)
         category = self.request.query_params.get("category")

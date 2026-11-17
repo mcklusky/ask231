@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import FormField from '../components/FormField'
 import PhoneNumberField from '../components/PhoneNumberField'
+import VerifyEmailNotice from '../components/VerifyEmailNotice'
 import { api, type Profile } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { messageFromError } from '../utils/errors'
@@ -51,8 +52,10 @@ export default function Account() {
   return <AuthLayout title="Your account" subtitle="Manage your personal details and preferences.">
     <div className="seller-tools"><Link to="/my-ads"><List size={16} /> My advertisements</Link><Link to="/favorites"><BadgeCheck size={16} /> Saved listings</Link><Link to="/messages"><MessageCircle size={16} /> Messages</Link><Link to="/ads/new"><Plus size={16} /> Post an advertisement</Link>{profile?.is_staff && <Link to="/admin"><ShieldCheck size={16} /> Admin dashboard</Link>}</div>
     {verificationMessage && <div className="alert-success" role="status">{verificationMessage}</div>}
+    <VerifyEmailNotice />
+
     <section className="verification-panel"><div><b>Seller verification</b><p>Verified sellers receive a badge on their listings. Our team reviews requests.</p></div>{form.seller_profile?.is_verified ? <span className="verify-badge verified"><BadgeCheck size={14}/> Verified seller</span> : <button type="button" className="admin-secondary-button" disabled={form.seller_profile?.verification_requested} onClick={() => void requestVerification()}>{form.seller_profile?.verification_requested ? 'Request under review' : 'Request verification'}</button>}</section>
-    <div className="account-summary"><span className="account-avatar"><UserRound size={23} /></span><div><b>{form.first_name} {form.last_name}</b><small>{form.email}</small></div><span className={`verify-badge ${form.email_verified ? 'verified' : ''}`}>{form.email_verified ? <><BadgeCheck size={14} /> Verified</> : 'Unverified'}</span></div>
+    <div className="account-summary"><span className="account-avatar"><UserRound size={23} /></span><div><b>{form.first_name} {form.last_name}</b><small>{form.email}</small></div><span className={`verify-badge ${form.email_verified ? 'verified' : ''}`}>{form.email_verified ? <><BadgeCheck size={14} /> Email verified</> : 'Email not verified'}</span></div>
     {error && <div className="alert-error" role="alert">{error}</div>}{notice && <div className="alert-success" role="status">{notice}</div>}
     <form className="auth-form account-form" onSubmit={save}>
       <div className="two-fields"><FormField label="First name" name="first_name" value={form.first_name} onChange={e => update('first_name', e.target.value)} required /><FormField label="Last name" name="last_name" value={form.last_name} onChange={e => update('last_name', e.target.value)} required /></div>

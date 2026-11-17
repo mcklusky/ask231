@@ -7,9 +7,18 @@ from rest_framework.views import APIView
 
 from .chat_serializers import ConversationSerializer, MessageCreateSerializer, MessageSerializer
 from .models import Advertisement, Conversation, Message
+from .permissions import HasVerifiedEmail
 
 
-class ConversationListCreateView(APIView):
+class VerifiedToWriteMixin:
+    """Anyone signed in can read their inbox; sending requires a verified email."""
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [permissions.IsAuthenticated(), HasVerifiedEmail()]
+        return [permissions.IsAuthenticated()]
+
+
+class ConversationListCreateView(VerifiedToWriteMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
@@ -35,7 +44,7 @@ class ConversationListCreateView(APIView):
         return Response(data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
 
-class ConversationMessagesView(APIView):
+class ConversationMessagesView(VerifiedToWriteMixin, APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_conversation(self, request, conversation_id):

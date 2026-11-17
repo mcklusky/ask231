@@ -8,6 +8,9 @@ from rest_framework.test import APIClient
 from .models import Advertisement, Category, County, SubCategory, Town
 from .models import Promotion, Report
 from accounts.models import User
+from django.core.cache import cache
+from django.utils import timezone as dj_timezone
+from .models import Conversation, Message
 
 
 class AdvertisementApiTests(TestCase):
@@ -15,6 +18,8 @@ class AdvertisementApiTests(TestCase):
         self.client = APIClient()
         self.seller = User.objects.create_user(email="seller@marketday.test", password="StrongPass!2026")
         self.other_user = User.objects.create_user(email="buyer@marketday.test", password="StrongPass!2026")
+        User.objects.filter(pk__in=[self.seller.pk, self.other_user.pk]).update(email_verified_at=dj_timezone.now())
+        self.seller.refresh_from_db(); self.other_user.refresh_from_db()
         self.category = Category.objects.get(name="Vehicles")
         self.subcategory = SubCategory.objects.get(category=self.category, name="Cars")
         self.other_category = Category.objects.get(name="Property")
@@ -178,6 +183,8 @@ class AdminDashboardApiTests(TestCase):
         self.assertEqual(subcategory.data["slug"], "staff-created-subcategory")
 
     def test_admin_can_resolve_reports_and_create_promotions_without_payment(self):
+        self.ad.status = Advertisement.Status.ACTIVE
+        self.ad.save(update_fields=["status"])
         self.client.force_authenticate(self.buyer)
         report_response = self.client.post("/api/market/reports/", {"advertisement_slug": self.ad.slug, "reason": "scam", "details": "Please review this listing."}, format="json")
         self.assertEqual(report_response.status_code, 201, report_response.data)
@@ -186,11 +193,77 @@ class AdminDashboardApiTests(TestCase):
         resolved = self.client.post(f"/api/admin/reports/{report.id}/resolve/", {"status": "resolved", "resolution_note": "Reviewed by staff."}, format="json")
         self.assertEqual(resolved.status_code, 200, resolved.data)
         self.assertEqual(resolved.data["status"], Report.Status.RESOLVED)
-        self.ad.status = Advertisement.Status.ACTIVE
-        self.ad.save(update_fields=["status"])
         from django.utils import timezone
         from datetime import timedelta
         promotion = self.client.post("/api/admin/promotions/", {"advertisement_slug": self.ad.slug, "kind": "featured", "status": "active", "ends_at": (timezone.now() + timedelta(days=7)).isoformat()}, format="json")
         self.assertEqual(promotion.status_code, 201, promotion.data)
         self.assertEqual(Promotion.objects.count(), 1)
         self.assertEqual(promotion.data["kind"], Promotion.Kind.FEATURED)
+
+
+class VerificationAndReportingTests(TestCase):
+    def setUp(self):
+        cache.clear()  # throttle counters live in the cache
+        self.client = APIClient()
+        self.seller = User.objects.create_user(email="verified-seller@marketday.test", password="StrongPass!2026", email_verified_at=dj_timezone.now())
+        self.unverified = User.objects.create_user(email="new-user@marketday.test", password="StrongPass!2026")
+        self.buyer = User.objects.create_user(email="verified-buyer@marketday.test", password="StrongPass!2026", email_verified_at=dj_timezone.now())
+        category = Category.objects.get(name="Vehicles")
+        subcategory = SubCategory.objects.get(category=category, name="Cars")
+        county = County.objects.get(slug="montserrado")
+        town = Town.objects.get(county=county, slug="monrovia")
+        self.ad_fields = dict(category=category, subcategory=subcategory, county=county, town=town, title="Toyota Hilux", description="Good condition pickup.", price="9000.00", currency="USD", condition="used", phone_number="+231 770 123 456")
+        self.ad = Advertisement.objects.create(seller=self.seller, status=Advertisement.Status.ACTIVE, **self.ad_fields)
+        self.payload = {"title": "Honda Fit", "description": "Clean car, ready to drive.", "price": "4000.00", "currency": "USD", "condition": "used", "phone_number": "+231 770 123 456", "category_id": category.id, "subcategory_id": subcategory.id, "county_id": county.id, "town_id": town.id}
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_unverified_user_cannot_post_ads_or_message_but_can_browse(self):
+        self.client.force_authenticate(self.unverified)
+        self.assertEqual(self.client.post("/api/market/advertisements/", self.payload, format="json").status_code, 403)
+        self.assertEqual(self.client.post("/api/market/messages/conversations/", {"advertisement_slug": self.ad.slug}, format="json").status_code, 403)
+        self.assertEqual(self.client.get("/api/market/advertisements/").status_code, 200)
+        self.assertEqual(self.client.get("/api/market/messages/conversations/").status_code, 200)
+        self.client.force_authenticate(self.seller)
+        self.assertEqual(self.client.post("/api/market/advertisements/", self.payload, format="json").status_code, 201)
+
+    def test_unverified_participant_cannot_send_messages(self):
+        conversation = Conversation.objects.create(advertisement=self.ad, buyer=self.unverified, seller=self.seller)
+        self.client.force_authenticate(self.unverified)
+        url = f"/api/market/messages/conversations/{conversation.id}/messages/"
+        self.assertEqual(self.client.post(url, {"body": "Is this available?"}, format="json").status_code, 403)
+        self.assertEqual(Message.objects.count(), 0)
+
+    def test_conversations_are_private_to_their_participants(self):
+        self.client.force_authenticate(self.buyer)
+        started = self.client.post("/api/market/messages/conversations/", {"advertisement_slug": self.ad.slug}, format="json")
+        self.assertEqual(started.status_code, 201, started.data)
+        url = f"/api/market/messages/conversations/{started.data['id']}/messages/"
+        self.assertEqual(self.client.post(url, {"body": "Is this still available?"}, format="json").status_code, 201)
+        outsider = User.objects.create_user(email="outsider@marketday.test", password="StrongPass!2026", email_verified_at=dj_timezone.now())
+        self.client.force_authenticate(outsider)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.assertEqual(self.client.post(url, {"body": "Hi"}, format="json").status_code, 404)
+        self.assertEqual(self.client.get("/api/market/messages/conversations/").data, [])
+
+    def test_reports_reject_duplicates_and_inactive_listings(self):
+        self.client.force_authenticate(self.buyer)
+        first = self.client.post("/api/market/reports/", {"advertisement_slug": self.ad.slug, "reason": "scam"}, format="json")
+        self.assertEqual(first.status_code, 201, first.data)
+        duplicate = self.client.post("/api/market/reports/", {"advertisement_slug": self.ad.slug, "reason": "scam"}, format="json")
+        self.assertEqual(duplicate.status_code, 400)
+        pending = Advertisement.objects.create(seller=self.seller, status=Advertisement.Status.PENDING, **{**self.ad_fields, "title": "Pending car"})
+        self.assertEqual(self.client.post("/api/market/reports/", {"advertisement_slug": pending.slug, "reason": "scam"}, format="json").status_code, 400)
+        self.assertEqual(Report.objects.count(), 1)
+
+    def test_resend_verification_email_is_rate_limited(self):
+        from django.core import mail
+        self.client.force_authenticate(self.unverified)
+        codes = [self.client.post("/api/auth/email/verify/").status_code for _ in range(6)]
+        self.assertEqual(codes[:5], [200] * 5)
+        self.assertEqual(codes[5], 429)
+        self.assertEqual(len(mail.outbox), 5)
+        self.client.force_authenticate(self.seller)
+        self.client.post("/api/auth/email/verify/")
+        self.assertEqual(len(mail.outbox), 5)  # already verified: no email sent

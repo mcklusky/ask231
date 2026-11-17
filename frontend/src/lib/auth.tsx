@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { api, type Profile, type Tokens } from './api'
+import { api, SESSION_EXPIRED_EVENT, type Profile, type Tokens } from './api'
 
 type AuthContextValue = { profile: Profile | null; ready: boolean; setProfile: (profile: Profile | null) => void; login: (email: string, password: string) => Promise<void>; logout: () => Promise<void> }
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -8,26 +8,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false)
   useEffect(() => {
     async function hydrate() {
-      const access = localStorage.getItem('marketday.access')
-      const refresh = localStorage.getItem('marketday.refresh')
-      if (!access) { setReady(true); return }
-      try {
-        const { data } = await api.get<Profile>('/auth/profile/')
-        setProfile(data)
-      } catch {
-        if (!refresh) { localStorage.removeItem('marketday.access'); setReady(true); return }
-        try {
-          const { data } = await api.post<Tokens>('/auth/token/refresh/', { refresh })
-          localStorage.setItem('marketday.access', data.access)
-          if (data.refresh) localStorage.setItem('marketday.refresh', data.refresh)
-          const result = await api.get<Profile>('/auth/profile/')
-          setProfile(result.data)
-        } catch {
-          localStorage.removeItem('marketday.access'); localStorage.removeItem('marketday.refresh')
-        }
-      } finally { setReady(true) }
+      if (!localStorage.getItem('marketday.access') && !localStorage.getItem('marketday.refresh')) { setReady(true); return }
+      // An expired access token is renewed automatically by the API client (see lib/api.ts).
+      try { const { data } = await api.get<Profile>('/auth/profile/'); setProfile(data) }
+      catch { localStorage.removeItem('marketday.access'); localStorage.removeItem('marketday.refresh') }
+      finally { setReady(true) }
     }
     void hydrate()
+    // If a session can't be renewed (signed out elsewhere, or 7 days passed), show the signed-out state.
+    const onExpired = () => setProfile(null)
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired)
   }, [])
   const value = useMemo<AuthContextValue>(() => ({
     profile, ready, setProfile,

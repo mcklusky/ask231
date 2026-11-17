@@ -14,3 +14,10 @@ class IsOwnerOrActiveReadOnly(BasePermission):
 class IsStaffOrReadOnly(BasePermission):
     def has_permission(self, request, view):
         return request.method in SAFE_METHODS or bool(request.user and request.user.is_staff)
+
+class HasVerifiedEmail(BasePermission):
+    """Posting ads and messaging require a confirmed email address (staff are exempt)."""
+    message = "Verify your email address before posting ads or messaging sellers. You can resend the verification link from your account page."
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and (user.is_staff or user.email_verified_at))

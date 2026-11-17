@@ -1,11 +1,10 @@
 import { ArrowLeft, ArrowRight, BadgeCheck, Check, MessageCircle, Send, Store } from '../lib/site-icons'
-import { ArrowRight as HeaderArrowRight, Store as HeaderStore } from 'lucide-react'
 import { FormEvent, useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { chatApi, type ChatConversation, type ChatMessage } from '../lib/chat'
 import { messageFromError } from '../utils/errors'
-import { ThemeToggle } from '../lib/theme'
+import PublicHeader from '../components/PublicHeader'
 
 function shortTime(value: string) {
   const date = new Date(value)
@@ -93,7 +92,7 @@ export default function Messages() {
   if (!ready) return <div className="chat-loading"><span className="spinner large-spinner"/></div>
   if (!profile) return <Navigate to="/login" replace />
 
-  return <div className="public-market jiji-market chat-page"><header className="public-header"><div className="public-header-inner"><Link to="/" className="brand"><span className="brand-mark"><HeaderStore size={20}/></span><span>marketday<span className="brand-country">LIBERIA</span></span></Link><nav><Link to="/listings">Buy smarter</Link><Link to="/ads/new">Sell faster</Link></nav><div className="public-header-actions"><Link className="public-account-link" to="/account">My account</Link><ThemeToggle /><Link className="public-sell-button" to="/">Marketplace <HeaderArrowRight size={14}/></Link></div></div></header>
+  return <div className="public-market jiji-market chat-page"><PublicHeader />
     <main className={`chat-layout ${id ? 'has-active-chat' : ''}`}>
       <aside className="chat-inbox-pane"><div className="chat-inbox-heading"><div><span className="public-eyebrow">YOUR MARKETPLACE</span><h1>Messages</h1></div><span className="chat-count">{conversations.length}</span></div>
         {error && !id && <div className="chat-error" role="alert">{error}</div>}

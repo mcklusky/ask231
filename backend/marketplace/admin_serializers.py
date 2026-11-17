@@ -99,7 +99,7 @@ class AdminReportSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "reporter_email", "target_title", "target_user_email", "advertisement", "reported_user", "reason", "details", "resolved_by", "created_at", "updated_at"]
 
 class ReportCreateSerializer(serializers.ModelSerializer):
-    advertisement_slug = serializers.SlugRelatedField(source="advertisement", slug_field="slug", queryset=Advertisement.objects.all(), required=False)
+    advertisement_slug = serializers.SlugRelatedField(source="advertisement", slug_field="slug", queryset=Advertisement.objects.filter(status=Advertisement.Status.ACTIVE), required=False)
     reported_user_id = serializers.PrimaryKeyRelatedField(source="reported_user", queryset=User.objects.filter(is_active=True), required=False)
     class Meta:
         model = Report
@@ -114,6 +114,11 @@ class ReportCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"advertisement_slug": "You cannot report your own advertisement."})
         if user and user.id == reporter.id:
             raise serializers.ValidationError({"reported_user_id": "You cannot report your own account."})
+        pending = Report.objects.filter(reporter=reporter, status__in=[Report.Status.OPEN, Report.Status.REVIEWING])
+        if ad and pending.filter(advertisement=ad).exists():
+            raise serializers.ValidationError({"detail": "You have already reported this listing. Our team is reviewing it."})
+        if user and pending.filter(reported_user=user).exists():
+            raise serializers.ValidationError({"detail": "You have already reported this account. Our team is reviewing it."})
         return attrs
     def create(self, validated_data):
         return Report.objects.create(reporter=self.context["request"].user, **validated_data)

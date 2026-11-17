@@ -21,12 +21,29 @@ export type Advertisement = {
   country: string; region: string; city: string; category: Category; subcategory: SubCategory; county: County | null; town: Town | null; images: AdImage[]; seller_name: string; seller_verified: boolean; created_at: string; updated_at: string; expires_at: string | null;
 }
 export function formatLocation(ad: Pick<Advertisement, 'country' | 'region' | 'city' | 'county' | 'town'>) {
-  const parts = ad.country.toLowerCase() === 'liberia' ? [ad.town?.name, ad.county?.name, 'Liberia'] : [ad.city || ad.town?.name, ad.region || ad.county?.name, ad.country]
-  return parts.filter(Boolean).join(', ')
+  // "Liberia" is implied on a Liberian marketplace; foreign listings keep their country.
+  const parts = ad.country.toLowerCase() === 'liberia' ? [ad.town?.name, ad.county?.name] : [ad.city || ad.town?.name, ad.region || ad.county?.name, ad.country]
+  return parts.filter(Boolean).join(', ') || ad.country
 }
+// Both Liberian and US dollars circulate, so a bare "$" is ambiguous: always say L$ or US$.
+const currencyPrefixes: Record<string, string> = { LRD: 'L$', USD: 'US$' }
 export function formatCurrencyAmount(amount: number, currency: string) {
-  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount) }
-  catch { return `${currency.toUpperCase()} ${amount.toLocaleString()}` }
+  const code = currency.toUpperCase()
+  const digits = Number.isInteger(amount) ? 0 : 2
+  const number = amount.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: 2 })
+  if (currencyPrefixes[code]) return `${currencyPrefixes[code]} ${number}`
+  try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol', minimumFractionDigits: digits, maximumFractionDigits: 2 }).format(amount) }
+  catch { return `${code} ${number}` }
+}
+/** Short, unambiguous posting date: "Today", "Yesterday", "3 days ago", then "16 Nov" (adds the year if not this year). */
+export function formatPostedDate(value: string, now = new Date()) {
+  const date = new Date(value)
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const days = Math.round((startOf(now) - startOf(date)) / 86_400_000)
+  if (days <= 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `${days} days ago`
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(date.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) })
 }
 export type Paginated<T> = { count: number; next: string | null; previous: string | null; results: T[] }
 
@@ -58,4 +75,15 @@ export const marketplaceApi = {
   favorites: () => api.get<Advertisement[]>('/market/favorites/'),
   addFavorite: (slug: string) => api.post('/market/favorites/', { advertisement_slug: slug }),
   removeFavorite: (slug: string) => api.delete(`/market/favorites/${slug}/`),
+  report: (slug: string, reason: ReportReason, details: string) => api.post<{ detail: string }>('/market/reports/', { advertisement_slug: slug, reason, details }),
+  resendVerificationEmail: () => api.post<{ detail: string }>('/auth/email/verify/'),
 }
+
+export type ReportReason = 'scam' | 'prohibited' | 'misleading' | 'harassment' | 'other'
+export const reportReasons: { value: ReportReason; label: string }[] = [
+  { value: 'scam', label: 'Possible scam or fraud' },
+  { value: 'prohibited', label: 'Prohibited item' },
+  { value: 'misleading', label: 'Misleading information' },
+  { value: 'harassment', label: 'Harassment or abuse' },
+  { value: 'other', label: 'Something else' },
+]
