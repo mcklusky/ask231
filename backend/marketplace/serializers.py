@@ -1,0 +1,130 @@
+from rest_framework import serializers
+from rest_framework.fields import IntegerField
+from .models import Advertisement, AdvertisementImage, Category, County, SubCategory, Town
+
+
+class SubCategorySerializer(serializers.ModelSerializer):
+    ad_count = IntegerField(source="active_ad_count", read_only=True, default=0)
+    class Meta:
+        model = SubCategory
+        fields = ["id", "name", "slug", "is_active", "sort_order", "ad_count"]
+        read_only_fields = ["slug"]
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    ad_count = IntegerField(source="active_ad_count", read_only=True, default=0)
+    subcategories = SubCategorySerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Category
+        fields = ["id", "name", "slug", "description", "icon", "is_active", "sort_order", "subcategories", "ad_count"]
+        read_only_fields = ["slug"]
+
+
+class CountySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = County
+        fields = ["id", "name", "slug"]
+
+
+class TownSerializer(serializers.ModelSerializer):
+    county_name = serializers.CharField(source="county.name", read_only=True)
+    class Meta:
+        model = Town
+        fields = ["id", "name", "slug", "county", "county_name"]
+
+
+class AdvertisementImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+    class Meta:
+        model = AdvertisementImage
+        fields = ["id", "image_url", "alt_text", "sort_order", "created_at"]
+
+    def get_image_url(self, obj):
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.image.url) if request else obj.image.url
+
+
+class AdvertisementSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(source="category", queryset=Category.objects.filter(is_active=True), write_only=True)
+    subcategory = SubCategorySerializer(read_only=True)
+    subcategory_id = serializers.PrimaryKeyRelatedField(source="subcategory", queryset=SubCategory.objects.filter(is_active=True), write_only=True)
+    county = CountySerializer(read_only=True)
+    county_id = serializers.PrimaryKeyRelatedField(source="county", queryset=County.objects.filter(is_active=True), write_only=True, required=False, allow_null=True)
+    town = TownSerializer(read_only=True)
+    town_id = serializers.PrimaryKeyRelatedField(source="town", queryset=Town.objects.filter(is_active=True), write_only=True, required=False, allow_null=True)
+    images = AdvertisementImageSerializer(many=True, read_only=True)
+    image_uploads = serializers.ListField(child=serializers.ImageField(), write_only=True, required=False, allow_empty=True)
+    seller_name = serializers.SerializerMethodField()
+    seller_verified = serializers.SerializerMethodField()
+    currency = serializers.RegexField(r"^[A-Z]{3}$", max_length=3)
+    country = serializers.CharField(max_length=100, default="Liberia")
+    phone_number = serializers.RegexField(r"^\+?[0-9][0-9 ()-]{5,18}[0-9]$", max_length=20)
+    whatsapp_number = serializers.RegexField(r"^\+?[0-9][0-9 ()-]{5,18}[0-9]$", max_length=20, required=False, allow_blank=True)
+
+    class Meta:
+        model = Advertisement
+        fields = ["id", "slug", "title", "description", "price", "currency", "condition", "status", "rejection_reason", "phone_number", "whatsapp_number", "views_count", "category", "category_id", "subcategory", "subcategory_id", "country", "region", "city", "county", "county_id", "town", "town_id", "images", "image_uploads", "seller_name", "seller_verified", "created_at", "updated_at", "expires_at"]
+        read_only_fields = ["id", "slug", "status", "rejection_reason", "views_count", "seller_name", "seller_verified", "created_at", "updated_at", "expires_at"]
+
+    def get_seller_name(self, obj):
+        seller = getattr(obj.seller, "seller_profile", None)
+        return (seller.business_name if seller and seller.business_name else f"{obj.seller.first_name} {obj.seller.last_name}".strip()) or obj.seller.email
+
+    def get_seller_verified(self, obj):
+        seller = getattr(obj.seller, "seller_profile", None)
+        return bool(seller and seller.is_verified)
+
+    def validate_image_uploads(self, files):
+        if len(files) > 10:
+            raise serializers.ValidationError("You can upload up to 10 images per advertisement.")
+        for file in files:
+            if file.size > 5 * 1024 * 1024:
+                raise serializers.ValidationError("Each image must be 5 MB or smaller.")
+            if file.name.rsplit(".", 1)[-1].lower() not in {"jpg", "jpeg", "png", "webp"}:
+                raise serializers.ValidationError("Images must be JPG, PNG, or WebP files.")
+        return files
+
+    def validate(self, attrs):
+        category = attrs.get("category", getattr(self.instance, "category", None))
+        subcategory = attrs.get("subcategory", getattr(self.instance, "subcategory", None))
+        county = attrs.get("county", getattr(self.instance, "county", None))
+        town = attrs.get("town", getattr(self.instance, "town", None))
+        country = attrs.get("country", getattr(self.instance, "country", "Liberia")).strip()
+        if not country:
+            raise serializers.ValidationError({"country": "Enter a country."})
+        attrs["country"] = country
+        if category and subcategory and subcategory.category_id != category.id:
+            raise serializers.ValidationError({"subcategory_id": "Choose a subcategory in the selected category."})
+        if county and town and town.county_id != county.id:
+            raise serializers.ValidationError({"town_id": "Choose a town in the selected county."})
+        if country.strip().casefold() == "liberia" and (not county or not town):
+            raise serializers.ValidationError({"county_id": "Choose a county and town in Liberia."})
+        if country.strip().casefold() != "liberia":
+            attrs["county"] = None
+            attrs["town"] = None
+            if not attrs.get("city", getattr(self.instance, "city", "")).strip():
+                raise serializers.ValidationError({"city": "Enter a city or town for this location."})
+        image_count = len(attrs.get("image_uploads", [])) + (self.instance.images.count() if self.instance else 0)
+        if image_count > 10:
+            raise serializers.ValidationError({"image_uploads": "An advertisement can have up to 10 images."})
+        return attrs
+
+    def create(self, validated_data):
+        uploads = validated_data.pop("image_uploads", [])
+        ad = Advertisement.objects.create(seller=self.context["request"].user, **validated_data)
+        AdvertisementImage.objects.bulk_create([AdvertisementImage(advertisement=ad, image=file, sort_order=index) for index, file in enumerate(uploads)])
+        return ad
+
+    def update(self, instance, validated_data):
+        uploads = validated_data.pop("image_uploads", [])
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        # Content edits return an active or rejected advert to moderation.
+        instance.status = Advertisement.Status.PENDING
+        instance.rejection_reason = ""
+        instance.save()
+        offset = instance.images.count()
+        AdvertisementImage.objects.bulk_create([AdvertisementImage(advertisement=instance, image=file, sort_order=offset + index) for index, file in enumerate(uploads)])
+        return instance
