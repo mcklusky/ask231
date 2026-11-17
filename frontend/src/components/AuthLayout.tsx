@@ -1,8 +1,81 @@
-import { ArrowLeft, BadgeCheck, ShieldCheck, Store } from '../lib/site-icons'
-import { Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { ThemeToggle } from '../lib/theme'
+import { Link } from 'react-router-dom'
+import { ArrowLeft, BadgeCheck, MapPin, Moon, ShieldCheck, Store, Sun } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useTheme } from '@/lib/theme'
+import { Button } from '@/components/ui/button'
 
-export default function AuthLayout({ children, title, subtitle }: { children: ReactNode; title: string; subtitle: string }) {
-  return <main className="auth-page"><header className="auth-header"><Link to="/" className="brand"><span className="brand-mark"><Store size={21} strokeWidth={2.4} /></span><span>marketday<span className="brand-country">LIBERIA</span></span></Link><div className="auth-header-actions"><ThemeToggle /><Link to="/" className="back-link"><ArrowLeft size={16} /> Back to marketplace</Link></div></header><div className="auth-grid"><section className="auth-story"><div className="story-pill"><span className="status-dot" /> Liberia's local marketplace</div><h1>Good things are<br />closer than you think.</h1><p>Find what you need and meet the people behind it. A simpler way to buy and sell across Liberia.</p><div className="story-points"><div><span><ShieldCheck size={18} /></span><div><b>Buy with confidence</b><small>Real people. Local communities.</small></div></div><div><span><BadgeCheck size={18} /></span><div><b>Grow your business</b><small>Reach customers in every county.</small></div></div></div><div className="story-decoration"><i /><i /><i /><i /><i /></div></section><section className="auth-form-wrap"><div className="auth-card"><div className="mobile-brand"><span className="brand-mark"><Store size={19} /></span><b>marketday <em>LIBERIA</em></b></div><div className="form-heading"><h2>{title}</h2><p>{subtitle}</p></div>{children}<div className="form-security"><ShieldCheck size={15} /> Your information is protected and secure</div></div><p className="form-legal">By continuing, you agree to our <a href="#terms">Terms</a> and <a href="#privacy">Privacy Policy</a>.</p></section></div><footer className="auth-footer"><span>© 2026 MarketDay Liberia</span><span>Made for Liberia <b>♥</b></span></footer></main>
+function Logo({ onBlue = false }: { onBlue?: boolean }) {
+  return (
+    <Link to="/" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="MarketDay Liberia home">
+      <span className="grid size-9 place-items-center rounded-xl bg-brand-red text-white shadow-sm ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
+      <span className="font-display leading-none">
+        <span className={cn('block text-[19px] font-extrabold tracking-tight', onBlue ? 'text-white' : 'text-foreground')}>marketday</span>
+        <span className={cn('mt-0.5 block text-[10px] font-bold tracking-[0.2em]', onBlue ? 'text-white/75' : 'text-muted-foreground')}>LIBERIA</span>
+      </span>
+    </Link>
+  )
+}
+
+/** Five-pointed star (as on the Liberian flag). */
+function LoneStar({ className }: { className?: string }) {
+  return <svg viewBox="0 0 24 24" className={className} aria-hidden="true"><path fill="currentColor" d="M12 1.8l2.95 6.98 7.55.62-5.74 4.94 1.75 7.38L12 17.77l-6.51 3.95 1.75-7.38L1.5 9.4l7.55-.62z" /></svg>
+}
+
+/** Sign-in, registration and account pages: Liberian-blue story panel beside a focused form. */
+export default function AuthLayout({ children, title, subtitle, wide = false }: { children: ReactNode; title: string; subtitle: string; wide?: boolean }) {
+  const { theme, toggleTheme } = useTheme()
+  const ThemeIcon = theme === 'dark' ? Sun : Moon
+  return (
+    <div className="min-h-dvh bg-background text-foreground lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      {/* Story panel (desktop) */}
+      <aside className="relative hidden overflow-hidden bg-primary text-white lg:flex lg:flex-col lg:justify-between lg:p-12 dark:bg-brand-blue-deep">
+        {/* red & white stripes, faded */}
+        <div className="pointer-events-none absolute inset-0 opacity-[0.13]" aria-hidden="true"
+          style={{ backgroundImage: 'repeating-linear-gradient(180deg, #c92f42 0 26px, #ffffff 26px 52px)', maskImage: 'linear-gradient(115deg, transparent 35%, #000 100%)', WebkitMaskImage: 'linear-gradient(115deg, transparent 35%, #000 100%)' }} />
+        <div className="relative"><Logo onBlue /></div>
+        <div className="relative max-w-md">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold tracking-wide ring-1 ring-white/20"><LoneStar className="size-3.5 text-white" />LIBERIA’S LOCAL MARKETPLACE</span>
+          <h2 className="mt-6 font-display text-5xl font-extrabold leading-[1.05] tracking-tight">Good things are closer than you think.</h2>
+          <p className="mt-4 text-base leading-relaxed text-white/80">Find what you need and meet the people behind it. A simpler way to buy and sell across all 15 counties.</p>
+          <ul className="mt-8 grid gap-4">
+            {[
+              { icon: ShieldCheck, title: 'Buy with confidence', text: 'Real people, verified sellers and safety tips.' },
+              { icon: BadgeCheck, title: 'Grow your business', text: 'Reach customers in every county.' },
+              { icon: MapPin, title: 'Local first', text: 'Prices in L$ or US$, meet-ups near you.' },
+            ].map(({ icon: Icon, title: heading, text }) => (
+              <li key={heading} className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/10 ring-1 ring-white/20"><Icon className="size-5" aria-hidden="true" /></span>
+                <span><b className="block text-sm">{heading}</b><span className="text-sm text-white/70">{text}</span></span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <LoneStar className="pointer-events-none absolute -bottom-16 -right-16 size-80 text-white/[0.07]" />
+        <p className="relative text-xs text-white/60">© {new Date().getFullYear()} MarketDay Liberia · Made for Liberia</p>
+      </aside>
+
+      {/* Form side */}
+      <div className="flex min-h-dvh flex-col">
+        <header className="flex h-16 items-center justify-between gap-2 border-b px-4 sm:px-8 lg:border-b-0">
+          <div className="lg:invisible"><Logo /></div>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}><ThemeIcon /></Button>
+            <Button asChild variant="ghost" className="px-3 text-muted-foreground"><Link to="/"><ArrowLeft /><span className="max-[400px]:sr-only">Back to marketplace</span></Link></Button>
+          </div>
+        </header>
+        <main className="flex flex-1 items-start justify-center px-4 py-8 sm:items-center sm:px-8 sm:py-12">
+          <div className={cn('w-full', wide ? 'max-w-xl' : 'max-w-md')}>
+            <div className="mb-6">
+              <h1 className="font-display text-3xl font-extrabold tracking-tight">{title}</h1>
+              <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>
+            </div>
+            {children}
+            <p className="mt-8 flex items-center justify-center gap-1.5 text-xs text-muted-foreground"><ShieldCheck className="size-3.5 text-primary" aria-hidden="true" />Your information is protected and secure</p>
+            <p className="mt-2 text-center text-xs text-muted-foreground">By continuing, you agree to our <a href="#terms" className="underline underline-offset-2 hover:text-foreground">Terms</a> and <a href="#privacy" className="underline underline-offset-2 hover:text-foreground">Privacy Policy</a>.</p>
+          </div>
+        </main>
+      </div>
+    </div>
+  )
 }

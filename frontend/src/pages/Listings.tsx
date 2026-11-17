@@ -6,19 +6,12 @@ import { ListingCard } from './Home'
 import { liberianCounties, marketplaceApi, type Advertisement, type Category, type County } from '../lib/marketplace'
 import { messageFromError } from '../utils/errors'
 import PublicHeader from '../components/PublicHeader'
-import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input, Label } from '@/components/ui/input'
+import { Segmented } from '@/components/ui/segmented'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-
-function Segmented({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) {
-  return <div role="radiogroup" aria-label={label} className="grid gap-1 rounded-lg bg-muted p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
-    {options.map(option => <button key={option.value || 'any'} type="button" role="radio" aria-checked={value === option.value} onClick={() => onChange(option.value)}
-      className={cn('h-9 rounded-md text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', value === option.value ? 'bg-card text-primary shadow-sm dark:text-brand-blue' : 'text-muted-foreground hover:text-foreground')}>{option.label}</button>)}
-  </div>
-}
 
 export default function Listings() {
   const { slug } = useParams()
