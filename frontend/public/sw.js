@@ -1,4 +1,4 @@
-/* Service worker for the site (Ask231).
+/* Service worker for the site (ask231).
  *
  * Goals for Liberian mobile networks: open fast on weak data, keep working when the
  * connection drops, and never download the same photo twice.

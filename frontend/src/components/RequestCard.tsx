@@ -9,9 +9,9 @@ export default function RequestCard({ request }: { request: BuyerRequest }) {
   return (
     <Card className="relative p-4 transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
       <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary dark:text-brand-blue"><Search className="size-5" aria-hidden="true" /></span>
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary dark:text-brand-primary"><Search className="size-5" aria-hidden="true" /></span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-brand-red">Looking for{request.category ? ` · ${request.category.name}` : ''}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-brand-accent">Looking for{request.category ? ` · ${request.category.name}` : ''}</p>
           <h3 className="mt-0.5 font-display text-base font-bold leading-snug">
             <Link to={`/requests/${request.id}`} className="after:absolute after:inset-0 focus-visible:outline-none">{request.title}</Link>
           </h3>

@@ -26,7 +26,7 @@ export default function HomeRequests() {
         <ul className="grid gap-3 sm:grid-cols-2">{items.map(item => <li key={item.id} className="grid"><RequestCard request={item} /></li>)}</ul>
       ) : (
         <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed bg-card p-5 sm:flex-row sm:items-center">
-          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-secondary text-primary dark:text-brand-blue"><Search className="size-5" aria-hidden="true" /></span>
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-secondary text-primary dark:text-brand-primary"><Search className="size-5" aria-hidden="true" /></span>
           <div className="flex-1">
             <b className="font-display">Can&apos;t find what you need?</b>
             <p className="text-sm text-muted-foreground">Post a request, like &ldquo;generator in Paynesville&rdquo; or &ldquo;tailor in Gbarnga&rdquo;, and let sellers come to you.</p>

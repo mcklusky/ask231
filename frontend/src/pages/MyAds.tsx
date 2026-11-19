@@ -16,10 +16,10 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 const STATUS: Record<Advertisement['status'], { label: string; variant: BadgeProps['variant'] }> = {
   pending: { label: 'In review', variant: 'warning' },
   active: { label: 'Live', variant: 'success' },
-  rejected: { label: 'Rejected', variant: 'red' },
+  rejected: { label: 'Rejected', variant: 'danger' },
   sold: { label: 'Sold', variant: 'secondary' },
   expired: { label: 'Expired', variant: 'outline' },
-  suspended: { label: 'Suspended', variant: 'red' },
+  suspended: { label: 'Suspended', variant: 'danger' },
 }
 
 export default function MyAds() {
@@ -79,9 +79,9 @@ export default function MyAds() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2"><Badge variant={status.variant}>{status.label}</Badge><span className="text-xs text-muted-foreground">{formatPostedDate(ad.created_at)}</span></div>
                         <h2 className="mt-1 line-clamp-2 font-semibold leading-snug">{ad.title}</h2>
-                        <p className="font-display font-extrabold text-primary dark:text-brand-blue">{formatCurrencyAmount(Number(ad.price), ad.currency)}</p>
+                        <p className="font-display font-extrabold text-primary dark:text-brand-primary">{formatCurrencyAmount(Number(ad.price), ad.currency)}</p>
                         <p className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-muted-foreground"><MapPin className="size-3.5 shrink-0" aria-hidden="true" /><span className="truncate">{ad.category.name} · {formatLocation(ad)}</span></p>
-                        {ad.status === 'rejected' && ad.rejection_reason && <p className="mt-2 rounded-md bg-brand-red/10 px-2.5 py-1.5 text-xs text-brand-red">Review note: {ad.rejection_reason}</p>}
+                        {ad.status === 'rejected' && ad.rejection_reason && <p className="mt-2 rounded-md bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">Review note: {ad.rejection_reason}</p>}
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -91,7 +91,7 @@ export default function MyAds() {
                         <Button variant="secondary" size="sm" onClick={() => void markSold(ad)} disabled={busy === ad.slug}>{busy === ad.slug ? <Loader2 className="animate-spin" /> : <Check />}Mark sold</Button>
                       )}
                       <ConfirmDialog
-                        trigger={<Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:bg-brand-red/10 hover:text-brand-red" aria-label={`Delete ${ad.title}`}><Trash2 /></Button>}
+                        trigger={<Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Delete ${ad.title}`}><Trash2 /></Button>}
                         title="Delete this advertisement?" description={<>“{ad.title}” will be removed permanently. This can’t be undone.</>}
                         confirmLabel="Delete" destructive onConfirm={() => remove(ad)}
                       />

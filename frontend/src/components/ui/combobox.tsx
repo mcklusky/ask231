@@ -39,7 +39,7 @@ export function Combobox({ id, options, value, onChange, placeholder = 'Selectâ€
           className={cn(
             'flex h-11 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-base shadow-sm transition-colors md:text-sm',
             'hover:border-primary/50 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50',
-            invalid && 'border-brand-red',
+            invalid && 'border-destructive',
             className,
           )}
         >

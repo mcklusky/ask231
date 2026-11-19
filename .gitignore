@@ -11,6 +11,11 @@ frontend/tsconfig.tsbuildinfo
 
 # Local logs
 *.log
+
 # Production server files
 backend/venv/
 backend/staticfiles/
+
+# Server deploy settings and backups
+deploy/lightsail/.env
+deploy/lightsail/backups/

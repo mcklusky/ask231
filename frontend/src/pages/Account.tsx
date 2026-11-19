@@ -99,7 +99,7 @@ export default function Account() {
               {form.email && (form.email_verified ? <Badge variant="success"><BadgeCheck aria-hidden="true" />Email verified</Badge> : <Badge variant="warning">Email not verified</Badge>)}
               {form.login_phone && !form.phone_verified && <Badge variant="warning">Phone not verified</Badge>}
               {sellerVerified && <Badge><ShieldCheck aria-hidden="true" />Verified seller</Badge>}
-              {profile?.is_staff && <Badge variant="red">Staff</Badge>}
+              {profile?.is_staff && <Badge variant="accent">Staff</Badge>}
             </div>
           </div>
         </Card>
@@ -180,7 +180,7 @@ export default function Account() {
           </form>
         </Card>
 
-        <Button variant="ghost" className="justify-self-center text-brand-red hover:bg-brand-red/10 hover:text-brand-red" onClick={() => void signOut()}><LogOut />Sign out</Button>
+        <Button variant="ghost" className="justify-self-center text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void signOut()}><LogOut />Sign out</Button>
       </div>
     </AuthLayout>
   )

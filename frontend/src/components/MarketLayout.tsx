@@ -11,7 +11,7 @@ export default function MarketLayout({ children, title, subtitle, eyebrow = 'Sel
       <PublicHeader />
       <main className="mx-auto w-full max-w-3xl px-4 pb-16 pt-8">
         <div className="mb-6">
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-brand-red">{eyebrow}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-brand-accent">{eyebrow}</p>
           <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">{title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
         </div>

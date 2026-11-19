@@ -34,7 +34,7 @@ export default function FormField({ label, hint, error, icon, labelAside, prefix
           type={password && shown ? 'text' : type}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
-          className={cn(icon && 'pl-10', password && 'pr-11', prefix && 'rounded-l-none', error && 'border-brand-red focus-visible:border-brand-red focus-visible:ring-brand-red/25', props.readOnly && 'bg-muted text-muted-foreground', className)}
+          className={cn(icon && 'pl-10', password && 'pr-11', prefix && 'rounded-l-none', error && 'border-destructive focus-visible:border-destructive focus-visible:ring-destructive/25', props.readOnly && 'bg-muted text-muted-foreground', className)}
           {...props}
         />
         {password && (
@@ -44,7 +44,7 @@ export default function FormField({ label, hint, error, icon, labelAside, prefix
           </button>
         )}
       </div>
-      {error ? <p id={`${inputId}-error`} className="text-xs font-medium text-brand-red">{error}</p>
+      {error ? <p id={`${inputId}-error`} className="text-xs font-medium text-destructive">{error}</p>
         : hint && <p id={`${inputId}-hint`} className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   )

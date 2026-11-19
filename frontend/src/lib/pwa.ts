@@ -30,6 +30,12 @@ export function isIosSafari() {
   return ios && /safari/i.test(ua) && !/crios|fxios|edgios|opios/i.test(ua)
 }
 
+/** Phones and tablets install the app directly; computers get a QR code to open the site on a phone instead. */
+export function isPhoneOrTablet() {
+  const ua = navigator.userAgent
+  return /android|iphone|ipad|ipod|mobile|silk|kaios/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
 export function useInstallApp() {
   const canPrompt = useSyncExternalStore(
     listener => { listeners.add(listener); return () => listeners.delete(listener) },

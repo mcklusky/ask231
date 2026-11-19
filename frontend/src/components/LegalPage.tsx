@@ -13,7 +13,7 @@ export default function LegalPage({ title, intro, sections }: { title: string; i
     <div className="min-h-dvh bg-background text-foreground">
       <PublicHeader />
       <main className="mx-auto w-full max-w-5xl px-4 pb-20 pt-8">
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-brand-red">{SITE_NAME}</p>
+        <p className="text-xs font-bold uppercase tracking-[0.15em] text-brand-accent">{SITE_NAME}</p>
         <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">Effective {LEGAL.effectiveDate}</p>
 
@@ -36,7 +36,7 @@ export default function LegalPage({ title, intro, sections }: { title: string; i
             </div>
           </nav>
 
-          <article className="max-w-prose text-[15px] leading-relaxed text-foreground/90 [&_a]:font-medium [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 dark:[&_a]:text-brand-blue [&_li]:mt-1.5 [&_p]:mt-3 [&_strong]:text-foreground [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-5">
+          <article className="max-w-prose text-[15px] leading-relaxed text-foreground/90 [&_a]:font-medium [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 dark:[&_a]:text-brand-primary [&_li]:mt-1.5 [&_p]:mt-3 [&_strong]:text-foreground [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-5">
             <div className="text-base text-foreground [&_p]:mt-0">{intro}</div>
             {sections.map((section, index) => (
               <section key={section.id} id={section.id} className="mt-10 scroll-mt-24 border-t pt-6">

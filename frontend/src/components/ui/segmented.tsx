@@ -15,7 +15,7 @@ export function Segmented({ label, value, onChange, options, className }: { labe
           onClick={() => onChange(option.value)}
           className={cn(
             'h-9 rounded-md text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            value === option.value ? 'bg-card text-primary shadow-sm dark:text-brand-blue' : 'text-muted-foreground hover:text-foreground',
+            value === option.value ? 'bg-card text-primary shadow-sm dark:text-brand-primary' : 'text-muted-foreground hover:text-foreground',
           )}
         >
           {option.label}

@@ -49,7 +49,7 @@ export default function ReportDialog({ slug, onSubmit, requireSignIn = true }: P
   return (
     <Dialog open={open} onOpenChange={openChange}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground hover:text-brand-red"><Flag />Report this listing</Button>
+        <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground hover:text-destructive"><Flag />Report this listing</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -70,7 +70,7 @@ export default function ReportDialog({ slug, onSubmit, requireSignIn = true }: P
             <Label htmlFor="report-details">Details <span className="font-normal text-muted-foreground">(optional)</span></Label>
             <Textarea id="report-details" rows={3} maxLength={2000} placeholder="For example: the seller asked for mobile money before meeting." value={details} onChange={event => setDetails(event.target.value)} />
           </div>
-          {error && <p role="alert" className="rounded-md border border-brand-red/30 bg-brand-red/10 px-3 py-2 text-sm text-brand-red">{error}</p>}
+          {error && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button type="submit" variant="cta" disabled={sending}><Flag />{sending ? 'Sending…' : 'Send report'}</Button>

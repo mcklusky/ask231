@@ -80,14 +80,14 @@ export default function ContactPanel(props: ContactPanelProps) {
     <Card className="overflow-hidden">
       <div className="space-y-2 border-b bg-gradient-to-b from-secondary/70 to-card p-5">
         <Badge variant="secondary" className="uppercase tracking-wide">{conditionLabel}</Badge>
-        <p className="font-display text-3xl font-extrabold leading-none tracking-tight text-primary dark:text-brand-blue">{priceLabel}</p>
+        <p className="font-display text-3xl font-extrabold leading-none tracking-tight text-primary dark:text-brand-primary">{priceLabel}</p>
         <h1 className="text-base font-semibold leading-snug text-foreground">{title}</h1>
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><MapPin className="size-4 shrink-0" aria-hidden="true" />{location}</p>
       </div>
 
       <div className="space-y-3 p-5">
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" onClick={props.onToggleSave} aria-pressed={saved} className={cn(saved && 'border-brand-red/50 text-brand-red hover:text-brand-red')}>
+          <Button variant="outline" onClick={props.onToggleSave} aria-pressed={saved} className={cn(saved && 'border-brand-accent/50 text-brand-accent hover:text-brand-accent')}>
             <Heart className={cn(saved && 'fill-current')} />{saved ? 'Saved' : 'Save'}
           </Button>
           <Button variant="outline" onClick={() => void shareListing(title, props.shareUrl ?? window.location.href)}><Share2 />Share</Button>
@@ -104,7 +104,7 @@ export default function ContactPanel(props: ContactPanelProps) {
             ? <Button asChild variant="whatsapp"><a href={props.whatsappHref} target="_blank" rel="noreferrer"><MessageCircle />WhatsApp</a></Button>
             : <Button variant="whatsapp" onClick={props.onWhatsApp}><MessageCircle />WhatsApp</Button>}
         </div>
-        {!props.isJob && <Button variant="outline-red" className="w-full" onClick={() => setOfferOpen(true)}><HandCoins />Make an offer</Button>}
+        {!props.isJob && <Button variant="outline-accent" className="w-full" onClick={() => setOfferOpen(true)}><HandCoins />Make an offer</Button>}
 
         <form onSubmit={submitMessage} className="space-y-2.5 border-t pt-4">
           <Label htmlFor="quick-message">{props.isJob ? 'Ask the employer a question' : 'Send the seller a message'}</Label>
@@ -120,7 +120,7 @@ export default function ContactPanel(props: ContactPanelProps) {
           <Button type="submit" variant="secondary" className="w-full" disabled={!draft.trim() || busy}><Send />{busy ? 'Sending…' : 'Send message'}</Button>
         </form>
 
-        {error && <p role="alert" className="rounded-md border border-brand-red/30 bg-brand-red/10 px-3 py-2 text-sm text-brand-red">{error}</p>}
+        {error && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
 
         <div className="flex items-start justify-between gap-3 border-t pt-3">
           <p className="flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground"><ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />Meet in a safe public place and check the item before you pay.</p>

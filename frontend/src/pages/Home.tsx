@@ -43,7 +43,7 @@ export function ListingCard({ ad }: { ad: Advertisement }) {
           {ad.seller_verified && <Badge variant="default" className="absolute right-2.5 top-2.5 gap-1 shadow-sm"><BadgeCheck aria-hidden="true" />Verified</Badge>}
         </div>
         <div className="flex flex-1 flex-col gap-1.5 p-3.5">
-          <p className="font-display text-lg font-extrabold leading-tight text-primary dark:text-brand-blue">{formatPrice(ad)}</p>
+          <p className="font-display text-lg font-extrabold leading-tight text-primary dark:text-brand-primary">{formatPrice(ad)}</p>
           <h3 className="line-clamp-2 text-sm font-medium leading-snug text-foreground">{ad.title}</h3>
           <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground"><MapPin className="size-3.5 shrink-0" aria-hidden="true" /><span className="truncate">{formatLocation(ad)}</span></p>
           <div className="mt-auto flex items-center justify-between gap-2 border-t pt-2.5 text-xs text-muted-foreground">

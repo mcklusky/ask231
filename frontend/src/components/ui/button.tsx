@@ -9,18 +9,18 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90',
-        // the site red: the main call to action ("Post an ad", "Sign up to sell")
-        cta: 'bg-brand-red text-white shadow-sm hover:bg-brand-red-hover',
+        // the accent colour: the main call to action ("Post an ad", "Sign up to sell")
+        cta: 'bg-brand-accent text-white shadow-sm hover:bg-brand-accent-hover',
         destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
         outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-        'outline-red': 'border border-brand-red/60 bg-background text-brand-red hover:bg-brand-red hover:text-white',
+        'outline-accent': 'border border-brand-accent/60 bg-background text-brand-accent hover:bg-brand-accent hover:text-white',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
         whatsapp: 'bg-whatsapp text-white shadow-sm hover:bg-whatsapp/90',
-        // for use on the blue header band
+        // for use on the teal header band
         'on-brand': 'text-white hover:bg-white/15',
-        'on-brand-solid': 'bg-white text-brand-blue-deep hover:bg-white/90',
+        'on-brand-solid': 'bg-white text-brand-primary-deep hover:bg-white/90',
       },
       size: {
         default: 'h-11 px-4',

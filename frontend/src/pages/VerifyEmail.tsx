@@ -13,7 +13,7 @@ export default function VerifyEmail() {
   return (
     <AuthLayout title={state === 'loading' ? 'Verifying your email' : state === 'success' ? 'Email verified' : 'Link unavailable'} subtitle={state === 'loading' ? 'Just a moment while we confirm your address.' : state === 'success' ? 'Thanks for confirming your email address.' : 'This verification link may have expired.'}>
       <div className="grid gap-4 rounded-xl border bg-card p-6 text-center shadow-sm">
-        <span className={cn('mx-auto grid size-14 place-items-center rounded-2xl', state === 'success' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950' : state === 'error' ? 'bg-brand-red/10 text-brand-red' : 'bg-secondary text-primary')}>
+        <span className={cn('mx-auto grid size-14 place-items-center rounded-2xl', state === 'success' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950' : state === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-secondary text-primary')}>
           <Icon className={cn('size-7', state === 'loading' && 'animate-spin')} aria-hidden="true" />
         </span>
         <p className="text-sm text-muted-foreground">{state === 'loading' ? 'Checking your link…' : state === 'error' ? 'Sign in and use “Resend link” on your account page to get a fresh email.' : 'You can now post ads, message sellers and make offers.'}</p>

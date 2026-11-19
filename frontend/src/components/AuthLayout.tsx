@@ -10,7 +10,7 @@ import { BrandLockup } from '@/components/Brand'
 function Logo({ onBlue = false }: { onBlue?: boolean }) {
   return (
     <Link to="/" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`${SITE_NAME} home`}>
-      <span className="grid size-9 place-items-center rounded-xl bg-brand-red text-white shadow-sm ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
+      <span className="grid size-9 place-items-center rounded-xl bg-brand-accent text-white shadow-sm ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
       <BrandLockup onBlue={onBlue} />
     </Link>
   )
@@ -21,17 +21,17 @@ function LoneStar({ className }: { className?: string }) {
   return <svg viewBox="0 0 24 24" className={className} aria-hidden="true"><path fill="currentColor" d="M12 1.8l2.95 6.98 7.55.62-5.74 4.94 1.75 7.38L12 17.77l-6.51 3.95 1.75-7.38L1.5 9.4l7.55-.62z" /></svg>
 }
 
-/** Sign-in, registration and account pages: Liberian-blue story panel beside a focused form. */
+/** Sign-in, registration and account pages: brand-colour story panel beside a focused form. */
 export default function AuthLayout({ children, title, subtitle, wide = false }: { children: ReactNode; title: string; subtitle: string; wide?: boolean }) {
   const { theme, toggleTheme } = useTheme()
   const ThemeIcon = theme === 'dark' ? Sun : Moon
   return (
     <div className="min-h-dvh bg-background text-foreground lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       {/* Story panel (desktop) */}
-      <aside className="relative hidden overflow-hidden bg-primary text-white lg:flex lg:flex-col lg:justify-between lg:p-12 dark:bg-brand-blue-deep">
-        {/* red & white stripes, faded */}
+      <aside className="relative hidden overflow-hidden bg-primary text-white lg:flex lg:flex-col lg:justify-between lg:p-12 dark:bg-brand-primary-deep">
+        {/* accent & white stripes, faded */}
         <div className="pointer-events-none absolute inset-0 opacity-[0.13]" aria-hidden="true"
-          style={{ backgroundImage: 'repeating-linear-gradient(180deg, #c92f42 0 26px, #ffffff 26px 52px)', maskImage: 'linear-gradient(115deg, transparent 35%, #000 100%)', WebkitMaskImage: 'linear-gradient(115deg, transparent 35%, #000 100%)' }} />
+          style={{ backgroundImage: 'repeating-linear-gradient(180deg, #b85a24 0 26px, #ffffff 26px 52px)', maskImage: 'linear-gradient(115deg, transparent 35%, #000 100%)', WebkitMaskImage: 'linear-gradient(115deg, transparent 35%, #000 100%)' }} />
         <div className="relative"><Logo onBlue /></div>
         <div className="relative max-w-md">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold tracking-wide ring-1 ring-white/20"><LoneStar className="size-3.5 text-white" />{COUNTRY_NAME.toUpperCase()}’S LOCAL MARKETPLACE</span>

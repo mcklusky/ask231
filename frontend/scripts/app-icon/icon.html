@@ -1,0 +1,58 @@
+<!doctype html>
+<!--
+  App icon source: a shopping bag with the site name on it.
+  Rendered to PNG by make-icons.ps1. Query string: ?size=512&maskable=1&word=ask&code=231
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=block" rel="stylesheet">
+<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}svg{display:block}</style>
+</head>
+<body>
+<script>
+const q = new URLSearchParams(location.search)
+const size = Number(q.get('size') || 512)
+const maskable = q.get('maskable') === '1'
+const word = q.get('word') || 'ask'
+const code = q.get('code') || '231'
+const PRIMARY = '#0f5c5c', PRIMARY_DARK = '#0a4343', ACCENT = '#b85a24'
+
+// Maskable icons get cropped to a circle by Android, so keep the bag inside the middle 80%.
+const scale = maskable ? 0.78 : 1
+const shift = (512 - 512 * scale) / 2
+const background = maskable
+  ? `<rect width="512" height="512" fill="${PRIMARY}"/>`
+  : `<rect x="8" y="8" width="496" height="496" rx="112" fill="${PRIMARY}"/>`
+
+const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="${size}" height="${size}">
+  ${background}
+  <g transform="translate(${shift} ${shift}) scale(${scale})">
+    <!-- handle -->
+    <path d="M164 186 V160 a92 80 0 0 1 184 0 V186" fill="none" stroke="#ffffff" stroke-width="30" stroke-linecap="round"/>
+    <!-- shadow under the bag -->
+    <path d="M110 186 H402 L424 436 a24 24 0 0 1 -24 26 H112 a24 24 0 0 1 -24 -26 Z" fill="${PRIMARY_DARK}" transform="translate(0 10)" opacity="0.55"/>
+    <!-- bag -->
+    <path d="M110 176 H402 L424 426 a24 24 0 0 1 -24 26 H112 a24 24 0 0 1 -24 -26 Z" fill="#ffffff"/>
+    <!-- red fold along the top -->
+    <path d="M110 176 H402 L406 222 H106 Z" fill="${ACCENT}"/>
+    <!-- handle rivets -->
+    <circle cx="164" cy="199" r="9" fill="#ffffff"/>
+    <circle cx="348" cy="199" r="9" fill="#ffffff"/>
+    <!-- name -->
+    <text x="256" y="362" text-anchor="middle" textLength="268" lengthAdjust="spacingAndGlyphs"
+          font-family="Poppins, Arial, sans-serif" font-weight="600" font-size="92" letter-spacing="-2">
+      <tspan fill="${PRIMARY}">${word}</tspan><tspan fill="${ACCENT}">${code}</tspan>
+    </text>
+  </g>
+</svg>`
+document.fonts.load('600 92px Poppins').finally(() => {
+  document.body.innerHTML = svg
+  document.title = 'ready'
+})
+</script>
+</body>
+</html>

@@ -70,7 +70,7 @@ export default function Register() {
         {seller && <FormField label="Shop or business name" name="seller_name" placeholder="Your business name" value={values.seller_name} onChange={e => update('seller_name', e.target.value)} required />}
         <Button type="submit" variant="cta" size="lg" className="mt-1 w-full" disabled={loading}>{loading ? <><Loader2 className="animate-spin" />Creating account…</> : <>Create account<ArrowRight /></>}</Button>
       </form>
-      <p className="mt-6 text-center text-sm text-muted-foreground">Already have an account? <Link to="/login" className="font-semibold text-primary hover:underline dark:text-brand-blue">Sign in</Link></p>
+      <p className="mt-6 text-center text-sm text-muted-foreground">Already have an account? <Link to="/login" className="font-semibold text-primary hover:underline dark:text-brand-primary">Sign in</Link></p>
     </AuthLayout>
   )
 }

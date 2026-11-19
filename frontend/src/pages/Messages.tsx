@@ -149,7 +149,7 @@ export default function Messages() {
           {/* Inbox */}
           <aside className={cn('w-full shrink-0 flex-col border-r md:flex md:w-80 lg:w-96', id ? 'hidden' : 'flex')} aria-label="Conversations">
             <div className="flex items-center justify-between gap-2 border-b px-4 py-4">
-              <div><p className="text-[11px] font-bold uppercase tracking-[0.15em] text-brand-red">Your marketplace</p><h1 className="font-display text-xl font-extrabold">Messages</h1></div>
+              <div><p className="text-[11px] font-bold uppercase tracking-[0.15em] text-brand-accent">Your marketplace</p><h1 className="font-display text-xl font-extrabold">Messages</h1></div>
               <span className="grid min-w-8 place-items-center rounded-full bg-secondary px-2 py-1 text-xs font-bold text-primary">{conversations.length}</span>
             </div>
             {error && !id && <Alert variant="error" className="m-3">{error}</Alert>}
@@ -172,10 +172,10 @@ export default function Messages() {
                               <b className="flex min-w-0 items-center gap-1 truncate text-sm">{conversation.other_user_name}{conversation.other_user_verified && <BadgeCheck className="size-3.5 shrink-0 text-primary" aria-label="Verified seller" />}</b>
                               <time className="shrink-0 text-[11px] text-muted-foreground">{listTime(conversation.updated_at)}</time>
                             </span>
-                            <span className="block truncate text-xs font-medium text-primary dark:text-brand-blue">{conversation.listing_title}</span>
+                            <span className="block truncate text-xs font-medium text-primary dark:text-brand-primary">{conversation.listing_title}</span>
                             <span className={cn('block truncate text-xs', conversation.unread_count ? 'font-semibold text-foreground' : 'text-muted-foreground')}>{conversation.last_message || 'No messages yet'}</span>
                           </span>
-                          {conversation.unread_count > 0 && <span className="grid min-w-5 place-items-center rounded-full bg-brand-red px-1.5 text-[11px] font-bold text-white" aria-label={`${conversation.unread_count} unread`}>{conversation.unread_count}</span>}
+                          {conversation.unread_count > 0 && <span className="grid min-w-5 place-items-center rounded-full bg-brand-accent px-1.5 text-[11px] font-bold text-white" aria-label={`${conversation.unread_count} unread`}>{conversation.unread_count}</span>}
                         </Link>
                       </li>
                     )

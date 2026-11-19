@@ -1,6 +1,6 @@
-# Ask231
+# ask231
 
-Ask231 is a Liberia-focused marketplace where people buy, sell and ask for anything. The name is the brand word plus the country calling code (Ask + 231), so a launch in another country becomes Ask233, Ask232 and so on. See "Launching in another country" in DEPLOYMENT.md. Authentication, advertisement management, staff administration, public discovery, search/filtering, messaging, saved listings, and seller verification requests are implemented in code. Production hosting, external email/media services, and final browser QA still require environment setup.
+ask231 is a Liberia-focused marketplace where people buy, sell and ask for anything. The name is the brand word plus the country calling code (Ask + 231), so a launch in another country becomes Ask233, Ask232 and so on. See "Launching in another country" in DEPLOYMENT.md. Authentication, advertisement management, staff administration, public discovery, search/filtering, messaging, saved listings, and seller verification requests are implemented in code. Production hosting, external email/media services, and final browser QA still require environment setup.
 
 ## Architecture
 - `frontend/`: React, TypeScript, Vite, Tailwind CSS, React Router, Axios, Lucide React.

@@ -145,7 +145,7 @@ export default function AdForm() {
           <div className="grid gap-2">
             <Label htmlFor="description">Description</Label>
             <Textarea id="description" maxLength={10000} rows={6} placeholder="Condition, size, age, what’s included, and anything buyers should know." value={form.description} onChange={e => update('description', e.target.value)} required />
-            <p className="flex justify-between gap-3 text-xs text-muted-foreground"><span>Be clear and honest. Never include bank or mobile money details. <Link to="/terms#prohibited" target="_blank" className="font-medium text-primary underline underline-offset-2 dark:text-brand-blue">Listing rules</Link></span><span className="shrink-0">{form.description.length}/10,000</span></p>
+            <p className="flex justify-between gap-3 text-xs text-muted-foreground"><span>Be clear and honest. Never include bank or mobile money details. <Link to="/terms#prohibited" target="_blank" className="font-medium text-primary underline underline-offset-2 dark:text-brand-primary">Listing rules</Link></span><span className="shrink-0">{form.description.length}/10,000</span></p>
           </div>
         </Step>
 
@@ -213,7 +213,7 @@ export default function AdForm() {
             onDragOver={event => { event.preventDefault(); setDragging(true) }} onDragLeave={() => setDragging(false)} onDrop={onDrop}
             className={cn('flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring', dragging ? 'border-primary bg-secondary' : 'border-input hover:border-primary/60 hover:bg-muted/50', photoCount >= MAX_PHOTOS && 'pointer-events-none opacity-60')}>
             <span className="grid size-12 place-items-center rounded-full bg-secondary text-primary"><ImagePlus className="size-6" aria-hidden="true" /></span>
-            <span className="font-semibold">Drag photos here or <span className="text-primary underline underline-offset-2 dark:text-brand-blue">choose from your device</span></span>
+            <span className="font-semibold">Drag photos here or <span className="text-primary underline underline-offset-2 dark:text-brand-primary">choose from your device</span></span>
             <span className="text-xs text-muted-foreground">JPG, PNG or WebP · up to 5 MB each · {photoCount}/{MAX_PHOTOS} added</span>
             <input ref={fileInput} type="file" accept={PHOTO_TYPES.join(',')} multiple className="sr-only" onChange={e => { addFiles(e.target.files); e.target.value = '' }} disabled={photoCount >= MAX_PHOTOS} />
           </label>
@@ -224,8 +224,8 @@ export default function AdForm() {
                 .map((photo, index) => (
                   <li key={photo.key} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted">
                     <img src={photo.src} alt={photo.alt} className="h-full w-full object-cover" />
-                    {index === 0 && <Badge variant="red" className="absolute bottom-1.5 left-1.5">Cover</Badge>}
-                    <button type="button" onClick={photo.remove} aria-label={`Remove photo ${index + 1}`} className="absolute right-1.5 top-1.5 grid size-8 place-items-center rounded-full bg-slate-950/70 text-white transition hover:bg-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+                    {index === 0 && <Badge variant="accent" className="absolute bottom-1.5 left-1.5">Cover</Badge>}
+                    <button type="button" onClick={photo.remove} aria-label={`Remove photo ${index + 1}`} className="absolute right-1.5 top-1.5 grid size-8 place-items-center rounded-full bg-slate-950/70 text-white transition hover:bg-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
                       <X className="size-4" />
                     </button>
                   </li>

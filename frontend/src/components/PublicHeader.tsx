@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { Download, Heart, Search, LayoutDashboard, List, LogOut, MessageCircle, Moon, Plus, Store, Sun, UserRound } from 'lucide-react'
+import { Download, Heart, Search, LayoutDashboard, List, LogOut, MessageCircle, Moon, Plus, Smartphone, Store, Sun, UserRound } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { accountLabel } from '@/lib/api'
 import { chatApi } from '@/lib/chat'
@@ -37,7 +37,7 @@ function useUnreadMessages(signedIn: boolean) {
 
 function UnreadBadge({ count, className }: { count: number; className?: string }) {
   if (!count) return null
-  return <span aria-hidden="true" className={cn('grid h-5 min-w-5 place-items-center rounded-full bg-brand-red px-1 text-[11px] font-bold leading-none text-white ring-2 ring-primary dark:ring-card', className)}>{count > 99 ? '99+' : count}</span>
+  return <span aria-hidden="true" className={cn('grid h-5 min-w-5 place-items-center rounded-full bg-brand-accent px-1 text-[11px] font-bold leading-none text-white ring-2 ring-primary dark:ring-card', className)}>{count > 99 ? '99+' : count}</span>
 }
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -55,10 +55,10 @@ export default function PublicHeader() {
   const messagesLabel = unread ? `Messages, ${unread} unread` : 'Messages'
 
   return (
-    <header className="sticky top-0 z-40 border-b-[3px] border-brand-red bg-primary text-white shadow-sm dark:bg-card">
+    <header className="sticky top-0 z-40 border-b-[3px] border-brand-accent bg-primary text-white shadow-sm dark:bg-card">
       <div className="mx-auto flex h-16 w-full max-w-[1160px] items-center gap-2 px-4 sm:gap-4">
         <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={`${SITE_NAME} home`}>
-          <span className="grid size-9 place-items-center rounded-xl bg-brand-red text-white shadow-sm ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
+          <span className="grid size-9 place-items-center rounded-xl bg-brand-accent text-white shadow-sm ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
           <BrandLockup onBlue hideCountryOnTiny />
         </Link>
 
@@ -97,11 +97,11 @@ export default function PublicHeader() {
                   <DropdownMenuItem asChild><Link to="/my-ads"><List /> My ads</Link></DropdownMenuItem>
                   <DropdownMenuItem asChild><Link to="/favorites"><Heart /> Saved listings</Link></DropdownMenuItem>
                   <DropdownMenuItem asChild><Link to="/requests?tab=mine"><Search /> My requests</Link></DropdownMenuItem>
-                  <DropdownMenuItem asChild><Link to="/messages"><MessageCircle /> Messages{unread > 0 && <span className="ml-auto rounded-full bg-brand-red px-1.5 text-[11px] font-bold text-white">{unread > 99 ? '99+' : unread}<span className="sr-only"> unread</span></span>}</Link></DropdownMenuItem>
-                  {installApp.canInstall && <DropdownMenuItem onSelect={() => void installApp.start()}><Download /> Install the app</DropdownMenuItem>}
+                  <DropdownMenuItem asChild><Link to="/messages"><MessageCircle /> Messages{unread > 0 && <span className="ml-auto rounded-full bg-brand-accent px-1.5 text-[11px] font-bold text-white">{unread > 99 ? '99+' : unread}<span className="sr-only"> unread</span></span>}</Link></DropdownMenuItem>
+                  {installApp.canInstall && <DropdownMenuItem onSelect={() => void installApp.start()}>{installApp.computer ? <Smartphone /> : <Download />} {installApp.label}</DropdownMenuItem>}
                   {profile.is_staff && <DropdownMenuItem asChild><Link to="/admin"><LayoutDashboard /> Staff dashboard</Link></DropdownMenuItem>}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={async () => { await logout(); navigate('/') }} className="text-brand-red focus:bg-brand-red/10 focus:text-brand-red [&_svg]:text-brand-red">
+                  <DropdownMenuItem onSelect={async () => { await logout(); navigate('/') }} className="text-destructive focus:bg-destructive/10 focus:text-destructive [&_svg]:text-destructive">
                     <LogOut /> Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>

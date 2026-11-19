@@ -38,7 +38,7 @@ const sectionDescription: Record<Tab, string> = { overview: 'Monitor activity an
 const STATUS_VARIANT: Record<string, BadgeProps['variant']> = {
   active: 'success', verified: 'success', resolved: 'success',
   pending: 'warning', reviewing: 'warning', scheduled: 'warning',
-  rejected: 'red', suspended: 'red', open: 'red',
+  rejected: 'danger', suspended: 'danger', open: 'danger',
   sold: 'secondary', inactive: 'secondary', unverified: 'outline', ended: 'outline', cancelled: 'outline', expired: 'outline', dismissed: 'outline',
 }
 function StatusPill({ value }: { value: string }) { return <Badge variant={STATUS_VARIANT[value] ?? 'outline'}>{titleCase(value)}</Badge> }
@@ -89,7 +89,7 @@ function Overview({ stats, onSelect }: { stats: Stats | null; onSelect: (tab: Ta
   if (!stats) return <Alert variant="error">Could not load marketplace statistics.</Alert>
   const adStates = [
     { label: 'Active', value: stats.active_ads, bar: 'bg-emerald-500' }, { label: 'Pending review', value: stats.pending_ads, bar: 'bg-amber-500' }, { label: 'Sold', value: stats.sold_ads, bar: 'bg-primary' },
-    { label: 'Rejected', value: stats.rejected_ads, bar: 'bg-brand-red' }, { label: 'Expired', value: stats.expired_ads, bar: 'bg-slate-400' }, { label: 'Suspended', value: stats.suspended_ads, bar: 'bg-rose-800' },
+    { label: 'Rejected', value: stats.rejected_ads, bar: 'bg-destructive' }, { label: 'Expired', value: stats.expired_ads, bar: 'bg-slate-400' }, { label: 'Suspended', value: stats.suspended_ads, bar: 'bg-rose-800' },
   ]
   const totalAds = adStates.reduce((sum, state) => sum + state.value, 0)
   const ListHeader = ({ title, subtitle, action, tab, filter }: { title: string; subtitle: string; action: string; tab: Tab; filter?: string }) => (
@@ -102,10 +102,10 @@ function Overview({ stats, onSelect }: { stats: Stats | null; onSelect: (tab: Ta
         <StatCard label="Seller profiles" value={stats.sellers} icon={Store} tone="bg-secondary text-primary" onClick={() => onSelect('sellers')} />
         <StatCard label="Live ads" value={stats.active_ads} icon={Package} tone="bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" onClick={() => onSelect('ads', 'active')} />
         <StatCard label="Awaiting review" value={stats.pending_ads} icon={ClipboardList} tone="bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300" onClick={() => onSelect('ads', 'pending')} />
-        <StatCard label="Open reports" value={stats.open_reports} icon={Flag} tone="bg-brand-red/10 text-brand-red" onClick={() => onSelect('reports', 'open')} />
+        <StatCard label="Open reports" value={stats.open_reports} icon={Flag} tone="bg-destructive/10 text-destructive" onClick={() => onSelect('reports', 'open')} />
         <StatCard label="Suspended accounts" value={stats.suspended_users} icon={ShieldAlert} tone="bg-muted text-muted-foreground" onClick={() => onSelect('users', 'suspended')} />
         <StatCard label="Sold" value={stats.sold_ads} icon={Check} tone="bg-secondary text-primary" />
-        <StatCard label="Live promotions" value={stats.active_promotions} icon={Megaphone} tone="bg-brand-red/10 text-brand-red" onClick={() => onSelect('promotions', 'active')} />
+        <StatCard label="Live promotions" value={stats.active_promotions} icon={Megaphone} tone="bg-brand-accent/10 text-brand-accent" onClick={() => onSelect('promotions', 'active')} />
       </div>
       <Card>
         <ListHeader title="Advertisement health" subtitle={`${totalAds.toLocaleString()} listings across all statuses`} action="Manage listings" tab="ads" />
@@ -291,15 +291,15 @@ export default function AdminDashboard() {
   const initials = (profile?.first_name?.[0] || profile?.email?.[0] || 'A').toUpperCase()
 
   const rowButton = (label: string, onClick: () => void, danger = false, disabled = false) => (
-    <Button size="sm" variant="outline" disabled={disabled} onClick={onClick} className={cn(danger ? 'border-brand-red/50 text-brand-red hover:bg-brand-red hover:text-white' : 'border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground dark:text-brand-blue')}>{label}</Button>
+    <Button size="sm" variant="outline" disabled={disabled} onClick={onClick} className={cn(danger ? 'border-destructive/50 text-destructive hover:bg-destructive hover:text-white' : 'border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground dark:text-brand-primary')}>{label}</Button>
   )
   const reviewMenu = (items: { label: string; onSelect: () => void; danger?: boolean }[]) => (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="border-primary/40 text-primary dark:text-brand-blue">Review<ChevronDown /></Button></DropdownMenuTrigger>
+      <DropdownMenuTrigger asChild><Button size="sm" variant="outline" className="border-primary/40 text-primary dark:text-brand-primary">Review<ChevronDown /></Button></DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-40">
         {items.map((item, index) => [
           item.danger && index > 0 && !items[index - 1].danger ? <DropdownMenuSeparator key={`sep-${item.label}`} /> : null,
-          <DropdownMenuItem key={item.label} onSelect={item.onSelect} className={cn(item.danger && 'text-brand-red focus:text-brand-red')}>{item.label}</DropdownMenuItem>,
+          <DropdownMenuItem key={item.label} onSelect={item.onSelect} className={cn(item.danger && 'text-destructive focus:text-destructive')}>{item.label}</DropdownMenuItem>,
         ])}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -420,9 +420,9 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-dvh bg-muted/40 text-foreground lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
       {/* Sidebar (desktop) */}
-      <aside className="hidden border-r-[3px] border-brand-red bg-primary text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col dark:bg-card">
+      <aside className="hidden border-r-[3px] border-brand-accent bg-primary text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col dark:bg-card">
         <Link to="/" className="flex items-center gap-2.5 px-5 py-5" aria-label={`${SITE_NAME} home`}>
-          <span className="grid size-9 place-items-center rounded-xl bg-brand-red ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
+          <span className="grid size-9 place-items-center rounded-xl bg-brand-accent ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
           <BrandLockup onBlue />
         </Link>
         <p className="px-5 pb-2 text-[11px] font-bold uppercase tracking-[0.15em] text-white/60">Administration</p>
@@ -433,7 +433,7 @@ export default function AdminDashboard() {
               <button key={item.id} type="button" onClick={() => selectTab(item.id)} aria-current={selected ? 'page' : undefined}
                 className={cn('flex h-10 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white', selected ? 'bg-white text-primary shadow-sm dark:bg-primary dark:text-white' : 'text-white/85 hover:bg-white/10 hover:text-white')}>
                 <Icon className="size-4" aria-hidden="true" /><span className="flex-1 text-left">{item.label}</span>
-                {item.id === 'reports' && stats?.open_reports ? <span className="grid min-w-5 place-items-center rounded-full bg-brand-red px-1.5 text-[11px] text-white">{stats.open_reports}</span> : null}
+                {item.id === 'reports' && stats?.open_reports ? <span className="grid min-w-5 place-items-center rounded-full bg-brand-accent px-1.5 text-[11px] text-white">{stats.open_reports}</span> : null}
               </button>
             )
           })}
@@ -451,7 +451,7 @@ export default function AdminDashboard() {
         {/* Top bar */}
         <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur">
           <div className="flex h-14 items-center gap-2 px-4 sm:px-6">
-            <Link to="/" className="mr-1 grid size-8 place-items-center rounded-lg bg-brand-red text-white lg:hidden" aria-label={`${SITE_NAME} home`}><Store className="size-4" aria-hidden="true" /></Link>
+            <Link to="/" className="mr-1 grid size-8 place-items-center rounded-lg bg-brand-accent text-white lg:hidden" aria-label={`${SITE_NAME} home`}><Store className="size-4" aria-hidden="true" /></Link>
             <p className="flex min-w-0 items-center gap-1.5 text-sm"><span className="text-muted-foreground">Admin</span><ChevronRight className="size-3.5 text-muted-foreground" aria-hidden="true" /><b className="truncate">{current.label}</b></p>
             <div className="ml-auto flex items-center gap-1">
               <Button variant="ghost" size="icon-sm" onClick={toggleTheme} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}><ThemeIcon /></Button>
@@ -465,7 +465,7 @@ export default function AdminDashboard() {
               return <button key={item.id} type="button" onClick={() => selectTab(item.id)} aria-current={selected ? 'page' : undefined}
                 className={cn('flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition-colors', selected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground')}>
                 <Icon className="size-4" aria-hidden="true" />{item.label}
-                {item.id === 'reports' && stats?.open_reports ? <span className="grid min-w-5 place-items-center rounded-full bg-brand-red px-1.5 text-[11px] text-white">{stats.open_reports}</span> : null}
+                {item.id === 'reports' && stats?.open_reports ? <span className="grid min-w-5 place-items-center rounded-full bg-brand-accent px-1.5 text-[11px] text-white">{stats.open_reports}</span> : null}
               </button>
             })}
           </nav>
@@ -474,7 +474,7 @@ export default function AdminDashboard() {
         <main className="mx-auto max-w-6xl p-4 sm:p-6">
           <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-brand-red">{SITE_NAME}</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-brand-accent">{SITE_NAME}</p>
               <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">{tab === 'overview' ? 'Marketplace overview' : current.label}</h1>
               <p className="text-sm text-muted-foreground">{sectionDescription[tab]}</p>
             </div>

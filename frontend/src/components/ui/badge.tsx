@@ -9,7 +9,8 @@ const badgeVariants = cva(
       variant: {
         default: 'border-transparent bg-primary text-primary-foreground',
         secondary: 'border-transparent bg-secondary text-secondary-foreground',
-        red: 'border-transparent bg-brand-red text-white',
+        accent: 'border-transparent bg-brand-accent text-white',
+        danger: 'border-transparent bg-destructive text-destructive-foreground',
         outline: 'text-foreground',
         // sits on top of listing photos
         overlay: 'border-transparent bg-white/95 text-slate-800 shadow-sm backdrop-blur dark:bg-slate-900/90 dark:text-slate-100',

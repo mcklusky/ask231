@@ -27,7 +27,7 @@ export function SocialLinks({ className }: { className?: string }) {
     <nav aria-label={`${SITE_NAME} on social media`} className={cn('flex flex-wrap items-center gap-2', className)}>
       {socialLinks.map(({ label, href, icon: Icon }) => (
         <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={`${SITE_NAME} on ${label}`} title={label}
-          className="grid size-9 place-items-center rounded-full border bg-card text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:text-brand-blue">
+          className="grid size-9 place-items-center rounded-full border bg-card text-muted-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:text-brand-primary">
           <Icon className="size-4" aria-hidden="true" />
         </a>
       ))}

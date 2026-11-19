@@ -78,12 +78,12 @@ if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend":
     EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 # ---------------------------------------------------------------------------
 # Country and brand. The site name is the brand word plus the country calling code
-# (Ask + 231 = Ask231). To launch in another country, change these values
+# (ask + 231 = ask231, always lowercase). To launch in another country, change these values
 # (e.g. COUNTRY_CALLING_CODE=233, COUNTRY_NAME=Ghana, DEFAULT_CURRENCY=GHS) and load that country's regions.
 COUNTRY_CALLING_CODE = os.getenv("COUNTRY_CALLING_CODE", "231")
 COUNTRY_NAME = os.getenv("COUNTRY_NAME", "Liberia")
 DEFAULT_CURRENCY = os.getenv("DEFAULT_CURRENCY", "LRD")
-BRAND_WORD = os.getenv("BRAND_WORD", "Ask")
+BRAND_WORD = os.getenv("BRAND_WORD", "ask")
 SITE_NAME = os.getenv("SITE_NAME", f"{BRAND_WORD}{COUNTRY_CALLING_CODE}")
 # ---------------------------------------------------------------------------
 
@@ -102,7 +102,11 @@ SHARE_BASE_URL = os.getenv("SHARE_BASE_URL", "")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:5173")
 CORS_ALLOWED_ORIGINS = [x.strip() for x in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if x.strip()]
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if x.strip()]
+# Number of proxies (e.g. Caddy/nginx/load balancer) in front of Django, so rate limits use the visitor's real IP.
+_num_proxies = os.getenv("NUM_PROXIES", "").strip()
 REST_FRAMEWORK = {"DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework_simplejwt.authentication.JWTAuthentication"], "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticatedOrReadOnly"], "DEFAULT_PAGINATION_CLASS": "config.pagination.MarketplacePagination", "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle", "rest_framework.throttling.UserRateThrottle"], "DEFAULT_THROTTLE_RATES": {"anon": "120/hour", "user": "1200/hour", "auth": "10/hour", "verification": "5/hour", "reports": "20/hour"}}
+if _num_proxies:
+    REST_FRAMEWORK["NUM_PROXIES"] = int(_num_proxies)
 SIMPLE_JWT = {"ACCESS_TOKEN_LIFETIME": timedelta(minutes=15), "REFRESH_TOKEN_LIFETIME": timedelta(days=7), "ROTATE_REFRESH_TOKENS": True, "BLACKLIST_AFTER_ROTATION": True, "AUTH_HEADER_TYPES": ("Bearer",)}
 if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -110,6 +114,7 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "True").lower() in {"true", "1", "yes", "on"}
     SECURE_REFERRER_POLICY = "same-origin"
     SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True").lower() in {"true", "1", "yes", "on"}
+    SECURE_REDIRECT_EXEMPT = [r"^health/$"]  # container health checks call Django directly over plain HTTP
     SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv("SECURE_HSTS_INCLUDE_SUBDOMAINS", "True").lower() in {"true", "1", "yes", "on"}
     SECURE_HSTS_PRELOAD = os.getenv("SECURE_HSTS_PRELOAD", "False").lower() in {"true", "1", "yes", "on"}

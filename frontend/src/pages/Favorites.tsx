@@ -48,7 +48,7 @@ export default function Favorites() {
             <li key={ad.id} className="flex flex-col gap-1.5">
               <ListingCard ad={ad} />
               <Button size="sm" variant="ghost" onClick={() => void remove(ad)} aria-label={`Remove ${ad.title} from saved listings`}
-                className="text-muted-foreground hover:bg-brand-red/10 hover:text-brand-red">
+                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
                 <HeartOff />Remove
               </Button>
             </li>
@@ -56,7 +56,7 @@ export default function Favorites() {
         </ul>
       ) : (
         <Card className="grid place-items-center gap-3 border-dashed px-6 py-12 text-center">
-          <span className="grid size-14 place-items-center rounded-2xl bg-brand-red/10 text-brand-red"><Heart className="size-7" aria-hidden="true" /></span>
+          <span className="grid size-14 place-items-center rounded-2xl bg-brand-accent/10 text-brand-accent"><Heart className="size-7" aria-hidden="true" /></span>
           <h2 className="font-display text-xl font-bold">No saved listings yet</h2>
           <p className="max-w-sm text-sm text-muted-foreground">Tap <b>Save</b> on any listing to keep it here for later.</p>
           <Button asChild variant="cta"><Link to="/listings"><Search />Explore listings</Link></Button>

@@ -10,7 +10,7 @@ function siteSettings(mode: string) {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   const countryCode = env.VITE_COUNTRY_CODE || '231'
   const countryName = env.VITE_COUNTRY_NAME || 'Liberia'
-  const siteName = `${env.VITE_BRAND_WORD || 'Ask'}${countryCode}`
+  const siteName = `${env.VITE_BRAND_WORD || 'ask'}${countryCode}`
   return { siteName, countryName, tagline: `Buy, sell and ask for anything in ${countryName}: phones, cars, homes, jobs and services.` }
 }
 

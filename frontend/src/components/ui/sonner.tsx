@@ -20,7 +20,7 @@ function Toaster(props: ToasterProps) {
           actionButton: 'group-[.toast]:bg-primary group-[.toast]:text-primary-foreground',
           cancelButton: 'group-[.toast]:bg-muted group-[.toast]:text-muted-foreground',
           success: 'group-[.toaster]:[&_[data-icon]]:text-emerald-600',
-          error: 'group-[.toaster]:[&_[data-icon]]:text-brand-red',
+          error: 'group-[.toaster]:[&_[data-icon]]:text-destructive',
         },
       }}
       {...props}

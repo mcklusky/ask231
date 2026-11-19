@@ -1,15 +1,21 @@
 import { cn } from '@/lib/utils'
 import { BRAND_WORD, COUNTRY_CODE, COUNTRY_NAME } from '@/config/site'
 
+const LOGO_FONT = 'Poppins, sans-serif'
+
 /**
- * The wordmark: brand word plus the country code in a small badge ("Ask" + "231").
- * `onBlue` is for the blue header and dark sidebars; otherwise it sits on white or card backgrounds.
+ * The wordmark, e.g. "ask231": lowercase Poppins, no backgrounds, the brand word in the text colour
+ * and the country code in the accent colour (a lighter tint on the teal header so it stays readable).
+ * `onBlue` is for the teal header and dark sidebars; otherwise it sits on white or card backgrounds.
  */
 export function BrandName({ onBlue = false, className }: { onBlue?: boolean; className?: string }) {
   return (
-    <span className={cn('inline-flex items-center gap-1 font-display font-extrabold tracking-tight', className)}>
-      {BRAND_WORD}
-      <span className={cn('rounded-md px-1.5 py-px text-[0.85em] leading-tight', onBlue ? 'bg-white text-brand-red' : 'bg-brand-red text-white')}>{COUNTRY_CODE}</span>
+    <span
+      className={cn('inline-flex items-center leading-none tracking-tight', onBlue ? 'text-white' : 'text-brand-primary dark:text-foreground', className)}
+      style={{ fontFamily: LOGO_FONT, fontWeight: 500 }}
+    >
+      {BRAND_WORD.toLowerCase()}
+      <span className={onBlue ? 'text-[#f7a072]' : 'text-brand-accent'}>{COUNTRY_CODE}</span>
     </span>
   )
 }
@@ -18,7 +24,7 @@ export function BrandName({ onBlue = false, className }: { onBlue?: boolean; cla
 export function BrandLockup({ onBlue = false, hideCountryOnTiny = false }: { onBlue?: boolean; hideCountryOnTiny?: boolean }) {
   return (
     <span className="leading-none">
-      <BrandName onBlue={onBlue} className={cn('text-[19px]', onBlue ? 'text-white' : 'text-foreground')} />
+      <BrandName onBlue={onBlue} className="text-[17px]" />
       <span className={cn('mt-1 block font-display text-[10px] font-bold uppercase tracking-[0.2em]', onBlue ? 'text-white/75' : 'text-muted-foreground', hideCountryOnTiny && 'max-[359px]:hidden')}>{COUNTRY_NAME}</span>
     </span>
   )

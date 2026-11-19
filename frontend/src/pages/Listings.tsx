@@ -87,7 +87,7 @@ export default function Listings() {
     <div className="browse-heading"><div><span className="public-eyebrow">{SITE_NAME.toUpperCase()} · {COUNTRY_NAME.toUpperCase()}</span><h1>{query ? `Results for “${query}”` : category?.name || 'Explore local listings'}</h1><p>{activeCounty ? `Available in ${activeCounty.name}, ${COUNTRY_NAME}.` : category?.description || `Browse products from ${COUNTRY_NAME} and sellers abroad.`}</p></div><span className="browse-sort">{sortLabels[filters.ordering] || 'Newest first'}</span></div><div className="browse-content-layout"><aside className="browse-filter-sidebar max-[760px]:hidden" aria-label="Refine listings">
         <Card className="p-4">
           <div className="mb-4 flex items-center justify-between gap-2">
-            <p className="flex items-center gap-2 font-display text-base font-bold"><SlidersHorizontal className="size-4 text-primary" aria-hidden="true" />Filters{activeFilterCount > 0 && <Badge variant="red">{activeFilterCount}</Badge>}</p>
+            <p className="flex items-center gap-2 font-display text-base font-bold"><SlidersHorizontal className="size-4 text-primary" aria-hidden="true" />Filters{activeFilterCount > 0 && <Badge variant="accent">{activeFilterCount}</Badge>}</p>
             {activeFilterCount > 0 && <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={clearFilters}>Clear all</Button>}
           </div>
           {renderFilterFields('desktop')}
@@ -96,7 +96,7 @@ export default function Listings() {
       <div className="min-[761px]:hidden">
         <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="lg" className="w-full"><SlidersHorizontal />Filters &amp; sort{activeFilterCount > 0 && <Badge variant="red" className="ml-1">{activeFilterCount}</Badge>}</Button>
+            <Button variant="outline" size="lg" className="w-full"><SlidersHorizontal />Filters &amp; sort{activeFilterCount > 0 && <Badge variant="accent" className="ml-1">{activeFilterCount}</Badge>}</Button>
           </SheetTrigger>
           <SheetContent side="bottom" className="gap-3 pb-0">
             <SheetHeader>

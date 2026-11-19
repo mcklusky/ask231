@@ -22,12 +22,12 @@ export default {
         accent: { DEFAULT: 'hsl(var(--ui-accent))', foreground: 'hsl(var(--ui-accent-foreground))' },
         popover: { DEFAULT: 'hsl(var(--ui-popover))', foreground: 'hsl(var(--ui-popover-foreground))' },
         card: { DEFAULT: 'hsl(var(--ui-card))', foreground: 'hsl(var(--ui-card-foreground))' },
-        // MarketDay brand: red, white and blue
+        // Brand colours by role, not hue, so a re-theme only changes the tokens in styles.css
         brand: {
-          blue: 'hsl(var(--ui-brand-blue))',
-          'blue-deep': 'hsl(var(--ui-brand-blue-deep))',
-          red: 'hsl(var(--ui-brand-red))',
-          'red-hover': 'hsl(var(--ui-brand-red-hover))',
+          primary: 'hsl(var(--ui-brand-primary))',
+          'primary-deep': 'hsl(var(--ui-brand-primary-deep))',
+          accent: 'hsl(var(--ui-brand-accent))',
+          'accent-hover': 'hsl(var(--ui-brand-accent-hover))',
           white: '#ffffff',
         },
         whatsapp: '#25d366',

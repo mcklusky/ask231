@@ -149,7 +149,7 @@ class PhoneSignInTests(TestCase):
         county = County.objects.get(slug="montserrado")
         ad = Advertisement.objects.create(seller=seller, status=Advertisement.Status.ACTIVE, category=category, subcategory=SubCategory.objects.get(category=category, name="Cars"), county=county, town=Town.objects.get(county=county, slug="monrovia"), title="Toyota Hilux", description="Good pickup.", price="9000.00", currency="USD", condition="used", phone_number="+231 770 123 456")
         data = self.client.get(f"/api/market/advertisements/{ad.slug}/").data
-        self.assertEqual(data["seller_name"], "Ask231 seller")
+        self.assertEqual(data["seller_name"], "ask231 seller")
         self.assertNotIn("private@example.com", str(data))
         self.assertFalse(data["seller_phone_verified"])
 
