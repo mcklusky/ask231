@@ -1,0 +1,66 @@
+
+name: Deploy Ask231 to Lightsail
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure SSH
+        env:
+          LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          LIGHTSAIL_SSH_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$LIGHTSAIL_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$LIGHTSAIL_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy application
+        env:
+          LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            -o IdentitiesOnly=yes \
+            "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" 'bash -se' <<'REMOTE'
+
+          set -e
+
+          cd /var/www/ask231/ask231
+
+          echo "Pulling latest code..."
+          git pull --ff-only origin main
+
+          echo "Installing Python dependencies..."
+          backend/venv/bin/pip install -r backend/requirements.txt
+
+          echo "Building React frontend..."
+          cd frontend
+          npm ci
+          npm run build
+
+          echo "Running Django migrations..."
+          cd ../backend
+          venv/bin/python manage.py migrate --noinput
+
+          echo "Collecting static files..."
+          venv/bin/python manage.py collectstatic --noinput
+
+          echo "Restarting Ask231..."
+          sudo systemctl restart ask231
+          sudo systemctl is-active --quiet ask231
+
+          echo "Deployment completed successfully!"
+
+          REMOTE
