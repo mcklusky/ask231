@@ -13,7 +13,7 @@ import { InstallAppCard } from '@/components/InstallApp'
 import HomeRequests from '@/components/HomeRequests'
 import { SocialLinks, WhatsAppChannelCard } from '@/components/SocialLinks'
 import { COUNTRY_ADJECTIVE, COUNTRY_NAME, SITE_NAME } from '@/config/site'
-import { BrandLockup } from '@/components/Brand'
+import { BrandLockup, LogoMark } from '@/components/Brand'
 
 const categoryIllustrations: Record<string, LucideIcon> = { vehicles: CarFront, property: Building2, 'mobile-phones': Smartphone, electronics: Laptop, 'home-and-furniture': Sofa, fashion: Shirt, jobs: BriefcaseBusiness, services: Wrench, agriculture: Sprout, 'food-agriculture-farming': Sprout, 'animals-and-pets': PawPrint, 'commercial-equipment': Factory, 'sports-and-hobbies': Dumbbell, 'beauty-personal-care': Sparkles, 'repair-construction': Hammer, 'babies-kids': Baby, 'seeking-work-cvs': FileText, 'business-industry': Building2, 'other-products': Package }
 const subcategoryIcons: Record<string, LucideIcon> = { 'vehicle-parts-accessories': Settings2, cars: CarFront, 'motorcycles-scooters': Bike, 'buses-microbuses': BusFront, 'trucks-trailers': Truck, 'construction-heavy-machinery': Construction, 'boats-watercraft': Anchor, 'watercraft-boats': Anchor, 'personal-mobility': Bike, 'auto-services': Wrench, 'mobile-phones': Smartphone, 'accessories-for-phones-tablets': Plug, 'smart-watches': Watch, tablets: Tablet, headphones: Headphones }
@@ -130,6 +130,6 @@ export default function Home() {
         </div>
       </div>
       <section className="market-sell-promo"><div><span className="public-eyebrow">SELL FASTER</span><h2>Have something to sell?</h2><p>Post an ad and connect with buyers near you.</p></div><div className="shrink-0"><Button asChild variant="cta" size="lg"><Link to={profile ? '/ads/new' : '/register'}>Post an ad <ArrowRight /></Link></Button></div></section>
-    </main><footer className="public-footer"><div className="public-footer-main"><Link to="/" className="brand"><span className="brand-mark"><Store size={18}/></span><BrandLockup /></Link><p>Local finds. {COUNTRY_ADJECTIVE} pride.</p><div><Link to="/listings">Browse listings</Link><Link to="/account">My account</Link><Link to="/register">Start selling</Link><Link to="/terms">Terms</Link><Link to="/privacy">Privacy</Link></div><SocialLinks/></div><div className="public-footer-bottom"><span>© {new Date().getFullYear()} {SITE_NAME}</span><span>Connecting communities, one find at a time.</span></div></footer>
+    </main><footer className="public-footer"><div className="public-footer-main"><Link to="/" className="brand"><LogoMark /><BrandLockup /></Link><p>Local finds. {COUNTRY_ADJECTIVE} pride.</p><div><Link to="/listings">Browse listings</Link><Link to="/account">My account</Link><Link to="/register">Start selling</Link><Link to="/terms">Terms</Link><Link to="/privacy">Privacy</Link></div><SocialLinks/></div><div className="public-footer-bottom"><span>© {new Date().getFullYear()} {SITE_NAME}</span><span>Connecting communities, one find at a time.</span></div></footer>
   </div>
 }

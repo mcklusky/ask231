@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { Download, Heart, Search, LayoutDashboard, List, LogOut, MessageCircle, Moon, Plus, Smartphone, Store, Sun, UserRound } from 'lucide-react'
+import { Download, Heart, Search, LayoutDashboard, List, LogOut, MessageCircle, Moon, Plus, Smartphone, Sun, UserRound } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { accountLabel } from '@/lib/api'
 import { chatApi } from '@/lib/chat'
 import { useInstallAction } from '@/components/InstallApp'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
-import { BrandLockup } from '@/components/Brand'
+import { BrandLockup, LogoMark } from '@/components/Brand'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -58,7 +58,7 @@ export default function PublicHeader() {
     <header className="sticky top-0 z-40 border-b-[3px] border-brand-accent bg-primary text-white shadow-sm dark:bg-card">
       <div className="mx-auto flex h-16 w-full max-w-[1160px] items-center gap-2 px-4 sm:gap-4">
         <Link to="/" className="flex shrink-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={`${SITE_NAME} home`}>
-          <span className="grid size-9 place-items-center rounded-xl bg-brand-accent text-white shadow-sm ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
+          <LogoMark onBrand />
           <BrandLockup onBlue hideCountryOnTiny />
         </Link>
 

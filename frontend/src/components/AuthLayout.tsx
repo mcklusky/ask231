@@ -1,16 +1,16 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, BadgeCheck, MapPin, Moon, ShieldCheck, Store, Sun } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, MapPin, Moon, ShieldCheck, Sun } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/lib/theme'
 import { Button } from '@/components/ui/button'
 import { COUNTRY_NAME, SITE_NAME } from '@/config/site'
-import { BrandLockup } from '@/components/Brand'
+import { BrandLockup, LogoMark } from '@/components/Brand'
 
 function Logo({ onBlue = false }: { onBlue?: boolean }) {
   return (
     <Link to="/" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`${SITE_NAME} home`}>
-      <span className="grid size-9 place-items-center rounded-xl bg-brand-accent text-white shadow-sm ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
+      <LogoMark onBrand={onBlue} />
       <BrandLockup onBlue={onBlue} />
     </Link>
   )

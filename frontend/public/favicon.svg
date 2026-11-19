@@ -1,7 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect x="1" y="1" width="62" height="62" rx="14" fill="#0f5c5c"/>
-  <path d="M21 23 V19.5 a11 9.5 0 0 1 22 0 V23" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
-  <path d="M13.5 22 H50.5 L53 53 a3 3 0 0 1 -3 3 H14 a3 3 0 0 1 -3 -3 Z" fill="#ffffff"/>
-  <path d="M13.5 22 H50.5 L51 28 H13 Z" fill="#b85a24"/>
-  <text x="32" y="47" text-anchor="middle" textLength="36" lengthAdjust="spacingAndGlyphs" font-family="Poppins, Arial, sans-serif" font-weight="700" font-size="14"><tspan fill="#0f5c5c">ask</tspan><tspan fill="#b85a24">231</tspan></text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Same bag as the logo mark (src/components/Brand.tsx) and app icons; no name, it is unreadable at tab size. -->
+  <rect width="512" height="512" rx="116" fill="#0f5c5c"/>
+  <g transform="translate(44 30) scale(0.83)">
+    <path d="M164 186 V160 a92 80 0 0 1 184 0 V186" fill="none" stroke="#ffffff" stroke-width="34" stroke-linecap="round"/>
+    <path d="M110 176 H402 L424 426 a24 24 0 0 1 -24 26 H112 a24 24 0 0 1 -24 -26 Z" fill="#ffffff"/>
+    <path d="M110 176 H402 L407 236 H105 Z" fill="#b85a24"/>
+  </g>
 </svg>

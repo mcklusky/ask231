@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { usePromptDialog } from '@/components/ui/prompt-dialog'
 import { COUNTRY_NAME, SITE_NAME } from '@/config/site'
-import { BrandLockup } from '@/components/Brand'
+import { BrandLockup, LogoMark } from '@/components/Brand'
 
 type Tab = 'overview' | 'users' | 'sellers' | 'ads' | 'categories' | 'locations' | 'reports' | 'promotions'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -422,7 +422,7 @@ export default function AdminDashboard() {
       {/* Sidebar (desktop) */}
       <aside className="hidden border-r-[3px] border-brand-accent bg-primary text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col dark:bg-card">
         <Link to="/" className="flex items-center gap-2.5 px-5 py-5" aria-label={`${SITE_NAME} home`}>
-          <span className="grid size-9 place-items-center rounded-xl bg-brand-accent ring-2 ring-white/90"><Store className="size-5" aria-hidden="true" /></span>
+          <LogoMark onBrand />
           <BrandLockup onBlue />
         </Link>
         <p className="px-5 pb-2 text-[11px] font-bold uppercase tracking-[0.15em] text-white/60">Administration</p>
@@ -451,7 +451,7 @@ export default function AdminDashboard() {
         {/* Top bar */}
         <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur">
           <div className="flex h-14 items-center gap-2 px-4 sm:px-6">
-            <Link to="/" className="mr-1 grid size-8 place-items-center rounded-lg bg-brand-accent text-white lg:hidden" aria-label={`${SITE_NAME} home`}><Store className="size-4" aria-hidden="true" /></Link>
+            <Link to="/" className="mr-1 rounded-lg lg:hidden" aria-label={`${SITE_NAME} home`}><LogoMark className="size-8" /></Link>
             <p className="flex min-w-0 items-center gap-1.5 text-sm"><span className="text-muted-foreground">Admin</span><ChevronRight className="size-3.5 text-muted-foreground" aria-hidden="true" /><b className="truncate">{current.label}</b></p>
             <div className="ml-auto flex items-center gap-1">
               <Button variant="ghost" size="icon-sm" onClick={toggleTheme} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}><ThemeIcon /></Button>
