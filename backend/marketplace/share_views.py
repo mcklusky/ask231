@@ -14,7 +14,7 @@ from django.urls import reverse
 from django.utils.text import Truncator
 from PIL import Image
 
-from .models import Advertisement
+from .models import Advertisement, is_abroad
 
 SHARE_IMAGE_MAX = 1200  # longest side of the JPEG served to link-preview crawlers
 
@@ -27,7 +27,7 @@ def _money(ad):
 
 
 def _location(ad):
-    if ad.country.lower() == "liberia":
+    if not is_abroad(ad.country):
         parts = [ad.town.name if ad.town else "", ad.county.name if ad.county else ""]
     else:
         parts = [ad.city or (ad.town.name if ad.town else ""), ad.region or (ad.county.name if ad.county else ""), ad.country]
@@ -59,7 +59,7 @@ def listing_share(request, slug):
         image = {"url": request.build_absolute_uri(reverse("listing-share-image", args=[ad.slug])), "type": "image/jpeg",
                  "width": width, "height": height, "alt": photo.alt_text or ad.title}
     condition = "New" if ad.condition == Advertisement.Condition.NEW else "Used"
-    location = _location(ad)
+    location = f"Ships from {ad.country} to {settings.COUNTRY_NAME}" if is_abroad(ad.country) else _location(ad)
     summary = " · ".join(part for part in [condition, location, ad.category.name] if part)
     return render(request, "marketplace/share.html", {
         "title": f"{_money(ad)} · {ad.title}",

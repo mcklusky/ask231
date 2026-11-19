@@ -81,7 +81,7 @@ class AdvertisementAdmin(admin.ModelAdmin):
     list_filter = ("status", "category", "country", "county", "condition", "currency")
     search_fields = ("title", "description", "country", "region", "city", "seller__email", "seller__first_name")
     readonly_fields = ("slug", "views_count", "created_at", "updated_at")
-    fields = ("seller", "category", "subcategory", "country", "region", "city", "county", "town", "title", "slug", "description", "price", "currency", "condition", "phone_number", "whatsapp_number", "status", "rejection_reason", "views_count", "created_at", "updated_at", "expires_at")
+    fields = ("seller", "category", "subcategory", "country", "shipping_details", "region", "city", "county", "town", "title", "slug", "description", "price", "currency", "condition", "phone_number", "whatsapp_number", "status", "rejection_reason", "views_count", "created_at", "updated_at", "expires_at")
     inlines = (AdvertisementImageInline,)
     actions = (approve_advertisements, reject_advertisements)
 

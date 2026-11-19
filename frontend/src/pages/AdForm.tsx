@@ -17,9 +17,10 @@ import { Combobox } from '@/components/ui/combobox'
 import { Label, Textarea } from '@/components/ui/input'
 import { Segmented } from '@/components/ui/segmented'
 import { COUNTRY_ADJECTIVE, COUNTRY_NAME, LOCAL_CURRENCY, LOCAL_CURRENCY_SYMBOL } from '@/config/site'
+import { COUNTRY_NAMES_SORTED, flagForCountryName } from '@/lib/countries'
 
-type FormState = { title: string; description: string; price: string; currency: string; condition: 'new' | 'used'; phone_number: string; whatsapp_number: string; country: string; region: string; city: string; landmark: string; job_type: JobType | ''; pay_period: PayPeriod | ''; how_to_apply: string; category_id: string; subcategory_id: string; county_id: string; town_id: string }
-const initial: FormState = { title: '', description: '', price: '', currency: 'LRD', condition: 'used', phone_number: '', whatsapp_number: '', country: COUNTRY_NAME, region: '', city: '', landmark: '', job_type: '', pay_period: 'month', how_to_apply: '', category_id: '', subcategory_id: '', county_id: '', town_id: '' }
+type FormState = { title: string; description: string; price: string; currency: string; condition: 'new' | 'used'; phone_number: string; whatsapp_number: string; country: string; shipping_details: string; region: string; city: string; landmark: string; job_type: JobType | ''; pay_period: PayPeriod | ''; how_to_apply: string; category_id: string; subcategory_id: string; county_id: string; town_id: string }
+const initial: FormState = { title: '', description: '', price: '', currency: 'LRD', condition: 'used', phone_number: '', whatsapp_number: '', country: COUNTRY_NAME, shipping_details: '', region: '', city: '', landmark: '', job_type: '', pay_period: 'month', how_to_apply: '', category_id: '', subcategory_id: '', county_id: '', town_id: '' }
 const MAX_PHOTOS = 10
 const MAX_BYTES = 5 * 1024 * 1024
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -46,7 +47,13 @@ export default function AdForm() {
   const fileInput = useRef<HTMLInputElement>(null)
   const category = useMemo(() => categories.find(item => String(item.id) === form.category_id), [categories, form.category_id])
   const county = useMemo(() => counties.find(item => String(item.id) === form.county_id), [counties, form.county_id])
-  const inLiberia = form.country.trim().toLowerCase() === COUNTRY_NAME.toLowerCase()
+  const inHomeCountry = form.country.trim().toLowerCase() === COUNTRY_NAME.toLowerCase()
+  // The site's country first, then A–Z; keep an older free-text country on an ad being edited.
+  const countryOptions = useMemo(() => {
+    const names = [COUNTRY_NAME, ...COUNTRY_NAMES_SORTED.filter(name => name !== COUNTRY_NAME)]
+    if (form.country && !names.some(name => name.toLowerCase() === form.country.toLowerCase())) names.push(form.country)
+    return names.map(name => ({ value: name, label: `${flagForCountryName(name)} ${name}`.trim() }))
+  }, [form.country])
   const currencyMode = form.currency === 'LRD' || form.currency === 'USD' ? form.currency : 'OTHER'
 
   useEffect(() => {
@@ -59,7 +66,7 @@ export default function AdForm() {
         setCategories(categoryResponse.data.results); setCounties(countyResponse.data.results)
         if (adResponse) {
           const ad = adResponse.data
-          setForm({ title: ad.title, description: ad.description, price: ad.price, currency: ad.currency, condition: ad.condition, phone_number: ad.phone_number, whatsapp_number: ad.whatsapp_number, country: ad.country || COUNTRY_NAME, region: ad.region || '', city: ad.city || '', landmark: ad.landmark || '', job_type: ad.job_type || '', pay_period: ad.pay_period || 'month', how_to_apply: ad.how_to_apply || '', category_id: String(ad.category.id), subcategory_id: String(ad.subcategory.id), county_id: ad.county ? String(ad.county.id) : '', town_id: ad.town ? String(ad.town.id) : '' })
+          setForm({ title: ad.title, description: ad.description, price: ad.price, currency: ad.currency, condition: ad.condition, phone_number: ad.phone_number, whatsapp_number: ad.whatsapp_number, country: ad.country || COUNTRY_NAME, shipping_details: ad.shipping_details || '', region: ad.region || '', city: ad.city || '', landmark: ad.landmark || '', job_type: ad.job_type || '', pay_period: ad.pay_period || 'month', how_to_apply: ad.how_to_apply || '', category_id: String(ad.category.id), subcategory_id: String(ad.subcategory.id), county_id: ad.county ? String(ad.county.id) : '', town_id: ad.town ? String(ad.town.id) : '' })
           setExisting(ad.images)
         }
       } catch (e) { if (mounted) setError(messageFromError(e, 'Could not load the form. Sign in and try again.')) }
@@ -104,8 +111,8 @@ export default function AdForm() {
     !form.category_id && 'category',
     !form.subcategory_id && 'subcategory',
     isJob && !form.job_type && 'job type',
-    inLiberia && !form.county_id && 'county',
-    inLiberia && !form.town_id && 'town',
+    inHomeCountry && !form.county_id && 'county',
+    inHomeCountry && !form.town_id && 'town',
     !form.phone_number.trim() && 'phone number',
   ].filter(Boolean) as string[]
 
@@ -182,8 +189,11 @@ export default function AdForm() {
         </Step>
 
         <Step number="3" title="Where can buyers find you?" description="Location and contact numbers are shown on your ad.">
-          <FormField label="Country" name="country" autoComplete="country-name" placeholder={COUNTRY_NAME} value={form.country} onChange={e => { update('country', e.target.value); update('county_id', ''); update('town_id', '') }} required />
-          {inLiberia ? (
+          <div className="grid gap-2"><Label htmlFor="country">Where are you selling from right now?</Label>
+            <Combobox id="country" options={countryOptions} value={form.country} onChange={value => { update('country', value || COUNTRY_NAME); update('county_id', ''); update('town_id', '') }} placeholder="Choose country" searchPlaceholder="Search countries…" />
+            <p className="text-xs text-muted-foreground">Outside {COUNTRY_NAME}? Choose your country and buyers will see that the item ships to {COUNTRY_NAME}.</p>
+          </div>
+          {inHomeCountry ? (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2"><Label htmlFor="county_id">County</Label>
                 <Combobox id="county_id" options={counties.map(item => ({ value: String(item.id), label: item.name }))} value={form.county_id} onChange={value => { update('county_id', value); update('town_id', '') }} placeholder="Choose county" searchPlaceholder="Search counties…" invalid={tried && !form.county_id} />
@@ -196,6 +206,10 @@ export default function AdForm() {
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField label="City or town" name="city" placeholder="City or town" value={form.city} onChange={e => update('city', e.target.value)} required />
               <FormField label="State, province, or region" name="region" placeholder="Optional" value={form.region} onChange={e => update('region', e.target.value)} />
+              <div className="grid gap-2 sm:col-span-2"><Label htmlFor="shipping_details">How will it reach buyers in {COUNTRY_NAME}?</Label>
+                <Textarea id="shipping_details" name="shipping_details" rows={2} maxLength={300} placeholder="e.g. DHL, arrives in 5–7 days, buyer pays US$20 delivery" value={form.shipping_details} onChange={e => update('shipping_details', e.target.value)} />
+                <p className="text-xs text-muted-foreground">Optional, but buyers trust ads that say how long delivery takes and what it costs.</p>
+              </div>
             </div>
           )}
           <FormField label="Landmark or area (optional)" name="landmark" maxLength={120} placeholder="Example: Behind Total station, Red Light" value={form.landmark} onChange={e => update('landmark', e.target.value)} hint="Helps buyers find you when there is no street address." />

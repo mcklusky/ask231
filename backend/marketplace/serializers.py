@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework.fields import IntegerField
 from .images import process_listing_photo
-from .models import Advertisement, AdvertisementImage, Category, County, SubCategory, Town
+from .models import Advertisement, AdvertisementImage, Category, County, SubCategory, Town, default_country, is_abroad
 
 
 class SubCategorySerializer(serializers.ModelSerializer):
@@ -71,13 +71,14 @@ class AdvertisementSerializer(serializers.ModelSerializer):
     seller_verified = serializers.SerializerMethodField()
     seller_phone_verified = serializers.SerializerMethodField()
     currency = serializers.RegexField(r"^[A-Z]{3}$", max_length=3)
-    country = serializers.CharField(max_length=100, default="Liberia")
+    country = serializers.CharField(max_length=100, default=default_country)
+    ships_from_abroad = serializers.BooleanField(read_only=True)
     phone_number = serializers.RegexField(r"^\+?[0-9][0-9 ()-]{5,18}[0-9]$", max_length=20)
     whatsapp_number = serializers.RegexField(r"^\+?[0-9][0-9 ()-]{5,18}[0-9]$", max_length=20, required=False, allow_blank=True)
 
     class Meta:
         model = Advertisement
-        fields = ["id", "slug", "title", "description", "price", "currency", "condition", "status", "rejection_reason", "phone_number", "whatsapp_number", "views_count", "category", "category_id", "subcategory", "subcategory_id", "country", "region", "city", "landmark", "job_type", "pay_period", "how_to_apply", "county", "county_id", "town", "town_id", "images", "image_uploads", "seller_name", "seller_verified", "seller_phone_verified", "created_at", "updated_at", "expires_at"]
+        fields = ["id", "slug", "title", "description", "price", "currency", "condition", "status", "rejection_reason", "phone_number", "whatsapp_number", "views_count", "category", "category_id", "subcategory", "subcategory_id", "country", "ships_from_abroad", "shipping_details", "region", "city", "landmark", "job_type", "pay_period", "how_to_apply", "county", "county_id", "town", "town_id", "images", "image_uploads", "seller_name", "seller_verified", "seller_phone_verified", "created_at", "updated_at", "expires_at"]
         read_only_fields = ["id", "slug", "status", "rejection_reason", "views_count", "seller_name", "seller_verified", "seller_phone_verified", "created_at", "updated_at", "expires_at"]
 
     def get_seller_name(self, obj):
@@ -113,21 +114,26 @@ class AdvertisementSerializer(serializers.ModelSerializer):
         subcategory = attrs.get("subcategory", getattr(self.instance, "subcategory", None))
         county = attrs.get("county", getattr(self.instance, "county", None))
         town = attrs.get("town", getattr(self.instance, "town", None))
-        country = attrs.get("country", getattr(self.instance, "country", "Liberia")).strip()
+        home = settings.COUNTRY_NAME
+        country = attrs.get("country", getattr(self.instance, "country", home)).strip()
         if not country:
-            raise serializers.ValidationError({"country": "Enter a country."})
-        attrs["country"] = country
+            raise serializers.ValidationError({"country": "Choose the country you are selling from."})
+        abroad = is_abroad(country)
+        attrs["country"] = country if abroad else home  # store the home country with its usual spelling
         if category and subcategory and subcategory.category_id != category.id:
             raise serializers.ValidationError({"subcategory_id": "Choose a subcategory in the selected category."})
         if county and town and town.county_id != county.id:
             raise serializers.ValidationError({"town_id": "Choose a town in the selected county."})
-        if country.strip().casefold() == "liberia" and (not county or not town):
-            raise serializers.ValidationError({"county_id": "Choose a county and town in Liberia."})
-        if country.strip().casefold() != "liberia":
+        if not abroad and (not county or not town):
+            raise serializers.ValidationError({"county_id": f"Choose a county and town in {home}."})
+        if abroad:
             attrs["county"] = None
             attrs["town"] = None
             if not attrs.get("city", getattr(self.instance, "city", "")).strip():
                 raise serializers.ValidationError({"city": "Enter a city or town for this location."})
+            attrs["shipping_details"] = attrs.get("shipping_details", getattr(self.instance, "shipping_details", "")).strip()
+        else:
+            attrs["shipping_details"] = ""  # only sellers abroad ship items in
         attrs["landmark"] = attrs.get("landmark", getattr(self.instance, "landmark", "")).strip()
         if category and category.slug == "jobs":
             if not attrs.get("job_type", getattr(self.instance, "job_type", "")):

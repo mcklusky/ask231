@@ -14,6 +14,7 @@ import HomeRequests from '@/components/HomeRequests'
 import { SocialLinks, WhatsAppChannelCard } from '@/components/SocialLinks'
 import { COUNTRY_ADJECTIVE, COUNTRY_NAME, SITE_NAME } from '@/config/site'
 import { BrandLockup, LogoMark } from '@/components/Brand'
+import { flagForCountryName } from '@/lib/countries'
 
 const categoryIllustrations: Record<string, LucideIcon> = { vehicles: CarFront, property: Building2, 'mobile-phones': Smartphone, electronics: Laptop, 'home-and-furniture': Sofa, fashion: Shirt, jobs: BriefcaseBusiness, services: Wrench, agriculture: Sprout, 'food-agriculture-farming': Sprout, 'animals-and-pets': PawPrint, 'commercial-equipment': Factory, 'sports-and-hobbies': Dumbbell, 'beauty-personal-care': Sparkles, 'repair-construction': Hammer, 'babies-kids': Baby, 'seeking-work-cvs': FileText, 'business-industry': Building2, 'other-products': Package }
 const subcategoryIcons: Record<string, LucideIcon> = { 'vehicle-parts-accessories': Settings2, cars: CarFront, 'motorcycles-scooters': Bike, 'buses-microbuses': BusFront, 'trucks-trailers': Truck, 'construction-heavy-machinery': Construction, 'boats-watercraft': Anchor, 'watercraft-boats': Anchor, 'personal-mobility': Bike, 'auto-services': Wrench, 'mobile-phones': Smartphone, 'accessories-for-phones-tablets': Plug, 'smart-watches': Watch, tablets: Tablet, headphones: Headphones }
@@ -41,6 +42,7 @@ export function ListingCard({ ad }: { ad: Advertisement }) {
             : <div className="grid h-full place-items-center text-muted-foreground"><CategoryIcon className="size-10" strokeWidth={1.5} aria-hidden="true" /></div>}
           <Badge variant="overlay" className="absolute left-2.5 top-2.5">{ad.condition === 'new' ? 'New' : 'Used'}</Badge>
           {ad.seller_verified && <Badge variant="default" className="absolute right-2.5 top-2.5 gap-1 shadow-sm"><BadgeCheck aria-hidden="true" />Verified</Badge>}
+          {ad.ships_from_abroad && <Badge variant="accent" className="absolute bottom-2.5 left-2.5 max-w-[calc(100%-1.25rem)] gap-1 shadow-sm"><span aria-hidden="true">{flagForCountryName(ad.country) || '📦'}</span><span className="truncate">Ships from {ad.country}</span></Badge>}
         </div>
         <div className="flex flex-1 flex-col gap-1.5 p-3.5">
           <p className="font-display text-lg font-extrabold leading-tight text-primary dark:text-brand-primary">{formatPrice(ad)}</p>

@@ -11,8 +11,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input, Label } from '@/components/ui/input'
 import { Segmented } from '@/components/ui/segmented'
+import { Combobox } from '@/components/ui/combobox'
+import { COUNTRY_NAMES_SORTED, flagForCountryName } from '@/lib/countries'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { COUNTRY_ADJECTIVE, COUNTRY_NAME, SITE_NAME } from '@/config/site'
+
+// Filter by where the seller is: any, the site's own country, or a country items ship from.
+const countryFilterOptions = [{ value: '', label: 'Any country' }, ...[COUNTRY_NAME, ...COUNTRY_NAMES_SORTED.filter(name => name !== COUNTRY_NAME)].map(name => ({ value: name, label: `${flagForCountryName(name)} ${name}`.trim() }))]
 
 export default function Listings() {
   const { slug } = useParams()
@@ -72,7 +77,7 @@ export default function Listings() {
         </div>
       </fieldset>
       <div className="grid gap-2"><Label htmlFor={`${prefix}-town`}>Town or city</Label><Input id={`${prefix}-town`} placeholder="Any town or city" value={filters.town} onChange={e => set('town')(e.target.value)} /></div>
-      <div className="grid gap-2"><Label htmlFor={`${prefix}-country`}>Country</Label><Input id={`${prefix}-country`} placeholder="Any country" value={filters.country} onChange={e => set('country')(e.target.value)} /></div>
+      <div className="grid gap-2"><Label htmlFor={`${prefix}-country`}>Seller's country</Label><Combobox id={`${prefix}-country`} options={countryFilterOptions} value={filters.country} onChange={set('country')} placeholder="Any country" searchPlaceholder="Search countries…" /></div>
     </div>
   }
   return <div className="public-market browse-market"><PublicHeader /><main className="browse-main"><div className="browse-crumb"><Link to="/"><ArrowLeft size={14} /> Home</Link><span>/</span>{category ? <><Link to="/listings">Listings</Link><span>/</span><b>{category.name}</b></> : <b>All listings</b>}</div>

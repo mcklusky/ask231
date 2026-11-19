@@ -13,6 +13,15 @@ from django.dispatch import receiver
 from django.utils.text import slugify
 
 
+def default_country():
+    return settings.COUNTRY_NAME
+
+
+def is_abroad(country):
+    """A listing's country is outside the site's own country (COUNTRY_NAME, e.g. Liberia)."""
+    return bool(country) and country.strip().casefold() != settings.COUNTRY_NAME.casefold()
+
+
 class County(models.Model):
     name = models.CharField(max_length=80, unique=True)
     slug = models.SlugField(max_length=90, unique=True)
@@ -129,7 +138,9 @@ class Advertisement(models.Model):
     subcategory = models.ForeignKey(SubCategory, on_delete=models.PROTECT, related_name="advertisements")
     county = models.ForeignKey(County, on_delete=models.PROTECT, related_name="advertisements", null=True, blank=True)
     town = models.ForeignKey(Town, on_delete=models.PROTECT, related_name="advertisements", null=True, blank=True)
-    country = models.CharField(max_length=100, default="Liberia")
+    # Where the seller and item are right now. Usually the site's own country; a seller abroad (e.g. in Ghana) ships to buyers here.
+    country = models.CharField(max_length=100, default=default_country)
+    shipping_details = models.CharField(max_length=300, blank=True, help_text="Sellers abroad only: how and when the item reaches buyers, and what delivery costs.")
     # Many places have no street address; people find them by landmark ("behind Total station, Red Light").
     landmark = models.CharField(max_length=120, blank=True)
     # Jobs category only: the price is the pay.
@@ -171,6 +182,11 @@ class Advertisement(models.Model):
             errors["town"] = "Choose a town in the selected county."
         if errors:
             raise ValidationError(errors)
+
+    @property
+    def ships_from_abroad(self):
+        """True when the seller is outside the site's country, so the item has to be shipped in."""
+        return is_abroad(self.country)
 
     def __str__(self):
         return self.title

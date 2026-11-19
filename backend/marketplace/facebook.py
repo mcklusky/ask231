@@ -19,6 +19,7 @@ import urllib.request
 
 from django.conf import settings
 from django.db import transaction
+from .models import is_abroad
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,8 @@ def post_text(ad):
     lines = [f"🆕 {ad.title}", f"💰 {_price(ad)}{' per ' + ad.pay_period if ad.pay_period and ad.pay_period != 'job' else ''}", f"📍 {place}"]
     if ad.landmark:
         lines[-1] += f" ({ad.landmark})"
+    if is_abroad(ad.country):
+        lines.append(f"📦 Ships from {ad.country} to {settings.COUNTRY_NAME}")
     lines.append(f"See the photos and message the seller on {settings.SITE_NAME} 👇")
     return "\n".join(lines)
 

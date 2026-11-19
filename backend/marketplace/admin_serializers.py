@@ -43,7 +43,7 @@ class AdminAdvertisementSerializer(serializers.ModelSerializer):
     town_name = serializers.CharField(source="town.name", read_only=True, allow_null=True)
     class Meta:
         model = Advertisement
-        fields = ["id", "slug", "title", "price", "currency", "condition", "status", "rejection_reason", "seller_email", "category_name", "country", "region", "city", "county_name", "town_name", "views_count", "images", "created_at", "updated_at"]
+        fields = ["id", "slug", "title", "price", "currency", "condition", "status", "rejection_reason", "seller_email", "category_name", "country", "shipping_details", "region", "city", "county_name", "town_name", "views_count", "images", "created_at", "updated_at"]
         read_only_fields = fields
 
 class AdminCategorySerializer(serializers.ModelSerializer):

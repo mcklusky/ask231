@@ -20,7 +20,7 @@ export type Town = { id: number; name: string; slug: string; county: number; cou
 export type AdImage = { id: number; image_url: string; thumbnail_url: string; width: number | null; height: number | null; alt_text: string; sort_order: number; created_at: string }
 export type Advertisement = {
   id: number; slug: string; title: string; description: string; price: string; currency: string; condition: 'new' | 'used'; status: 'pending' | 'active' | 'rejected' | 'sold' | 'expired' | 'suspended'; rejection_reason: string; phone_number: string; whatsapp_number: string; views_count: number;
-  country: string; region: string; city: string; landmark?: string; job_type?: JobType | ''; pay_period?: PayPeriod | ''; how_to_apply?: string; category: Category; subcategory: SubCategory; county: County | null; town: Town | null; images: AdImage[]; seller_name: string; seller_verified: boolean; seller_phone_verified?: boolean; created_at: string; updated_at: string; expires_at: string | null;
+  country: string; ships_from_abroad?: boolean; shipping_details?: string; region: string; city: string; landmark?: string; job_type?: JobType | ''; pay_period?: PayPeriod | ''; how_to_apply?: string; category: Category; subcategory: SubCategory; county: County | null; town: Town | null; images: AdImage[]; seller_name: string; seller_verified: boolean; seller_phone_verified?: boolean; created_at: string; updated_at: string; expires_at: string | null;
 }
 export type JobType = 'full_time' | 'part_time' | 'contract' | 'temporary' | 'internship' | 'volunteer'
 export type PayPeriod = 'month' | 'week' | 'day' | 'hour' | 'job'
