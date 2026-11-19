@@ -11,3 +11,6 @@ frontend/tsconfig.tsbuildinfo
 
 # Local logs
 *.log
+# Production server files
+backend/venv/
+backend/staticfiles/
