@@ -7,6 +7,8 @@ import { useAuth } from '../lib/auth'
 import AuthLayout from '../components/AuthLayout'
 import ResendVerificationEmail from '../components/ResendVerificationEmail'
 import { messageFromError } from '../utils/errors'
+import { toast } from 'sonner'
+import { SITE_NAME } from '@/config/site'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
@@ -40,7 +42,11 @@ export default function VerifyEmail() {
         setDetail(data.detail)
         // The link signs them in, so they land in their account without typing the password again.
         if (data.access && data.refresh) {
-          try { await signInWithTokens({ access: data.access, refresh: data.refresh }); navigate('/account?verified=1', { replace: true }); return }
+          try {
+            await signInWithTokens({ access: data.access, refresh: data.refresh })
+            toast.success('Email verified', { description: `Welcome to ${SITE_NAME}! You're signed in.` })
+            navigate('/', { replace: true }); return
+          }
           catch { /* fall back to the "sign in" button below */ }
         }
         setState('verified')
@@ -54,7 +60,7 @@ export default function VerifyEmail() {
 
   const good = state === 'verified' || state === 'already_verified'
   const Icon = state === 'loading' ? Loader2 : good ? CircleCheck : CircleAlert
-  const nextLink = profile ? '/account' : '/login'
+  const nextLink = profile ? '/' : '/login'
   return (
     <AuthLayout title={COPY[state].title} subtitle={COPY[state].subtitle}>
       <div className="grid gap-4 rounded-xl border bg-card p-6 text-center shadow-sm">
@@ -64,7 +70,7 @@ export default function VerifyEmail() {
         <p className="text-sm text-muted-foreground" role={state === 'loading' ? undefined : 'status'}>
           {state === 'loading' ? 'Checking your link…' : good ? `${detail || 'Your email is verified.'} You can now post ads, message sellers and make offers.` : detail || 'Ask for a new verification link below.'}
         </p>
-        {good && <Button asChild variant="cta" size="lg" className="w-full"><Link to={nextLink}>{profile ? 'Go to my account' : 'Sign in'}<ArrowRight /></Link></Button>}
+        {good && <Button asChild variant="cta" size="lg" className="w-full"><Link to={nextLink}>{profile ? 'Start browsing' : 'Sign in'}<ArrowRight /></Link></Button>}
         {!good && state !== 'loading' && <>
           {profile?.email_verified
             ? <Button asChild variant="cta" size="lg" className="w-full"><Link to="/account">Go to my account<ArrowRight /></Link></Button>

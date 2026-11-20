@@ -18,7 +18,7 @@ export default function Login() {
   const next = params.get('next')
   async function submit(event: FormEvent) {
     event.preventDefault(); setError(''); setUnverified(null); setLoading(true)
-    try { await login(email, password); navigate(next?.startsWith('/') && !next.startsWith('//') ? next : '/account') }
+    try { await login(email, password); navigate(next?.startsWith('/') && !next.startsWith('//') ? next : '/') /* home; account details live under the profile menu */ }
     catch (e) {
       const pending = unverifiedEmailFrom(e)
       if (pending !== null) setUnverified(pending)

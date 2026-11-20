@@ -93,7 +93,7 @@ export default function PublicHeader() {
                     <span className="block truncate text-xs font-normal text-muted-foreground">{accountLabel(profile)}</span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild><Link to="/account"><UserRound /> My account</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link to="/account"><UserRound /> My profile</Link></DropdownMenuItem>
                   <DropdownMenuItem asChild><Link to="/my-ads"><List /> My ads</Link></DropdownMenuItem>
                   <DropdownMenuItem asChild><Link to="/favorites"><Heart /> Saved listings</Link></DropdownMenuItem>
                   <DropdownMenuItem asChild><Link to="/requests?tab=mine"><Search /> My requests</Link></DropdownMenuItem>

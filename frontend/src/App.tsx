@@ -26,7 +26,7 @@ import { ThemeProvider } from './lib/theme'
 import { Toaster } from '@/components/ui/sonner'
 import { OfflineBar } from '@/components/InstallApp'
 
-function AuthRoute({ children }: { children: React.ReactNode }) { const { profile } = useAuth(); const location = useLocation(); const requested = new URLSearchParams(location.search).get('next'); const next = requested?.startsWith('/') && !requested.startsWith('//') ? requested : '/account'; return profile ? <Navigate to={next} replace /> : <>{children}</> }
+function AuthRoute({ children }: { children: React.ReactNode }) { const { profile } = useAuth(); const location = useLocation(); const requested = new URLSearchParams(location.search).get('next'); const next = requested?.startsWith('/') && !requested.startsWith('//') ? requested : '/'; return profile ? <Navigate to={next} replace /> : <>{children}</> }
 function StaffRoute({ children }: { children: React.ReactNode }) { const { profile, ready } = useAuth(); if (!ready) return <div className="admin-route-loading"><span className="spinner large-spinner" /></div>; if (!profile) return <Navigate to="/login" replace />; if (!profile.is_staff) return <Navigate to="/account" replace />; return <>{children}</> }
 // Pages other than the homepage load on demand, so phones only download what they open.
 function PageLoading() { return <div className="grid min-h-[60vh] place-items-center" role="status" aria-label="Loading"><span className="size-8 animate-spin rounded-full border-[3px] border-primary/20 border-t-primary" /></div> }
