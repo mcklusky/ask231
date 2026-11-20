@@ -87,13 +87,14 @@ BRAND_WORD = os.getenv("BRAND_WORD", "ask")
 SITE_NAME = os.getenv("SITE_NAME", f"{BRAND_WORD}{COUNTRY_CALLING_CODE}")
 # ---------------------------------------------------------------------------
 
-# Text messages: "console" prints them (development); "twilio" sends them. See accounts/sms.py.
+# Text messages: "console" prints them (development); "aws" or "twilio" sends them. See accounts/sms.py.
 SMS_BACKEND = os.getenv("SMS_BACKEND", "console")
 if len(sys.argv) > 1 and sys.argv[1] == "test":
     SMS_BACKEND = "locmem"  # tests read texts from accounts.sms.outbox
 SMS_FROM = os.getenv("SMS_FROM", "")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
+SMS_AWS_REGION = os.getenv("SMS_AWS_REGION", os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-east-1")))
 # Post newly approved ads to the brand's Facebook page (off until both are set). See marketplace/facebook.py.
 FACEBOOK_PAGE_ID = os.getenv("FACEBOOK_PAGE_ID", "")
 FACEBOOK_PAGE_TOKEN = os.getenv("FACEBOOK_PAGE_TOKEN", "")

@@ -6,6 +6,10 @@ Pick the provider with the ``SMS_BACKEND`` setting:
 - ``locmem``: keeps texts in ``sms.outbox`` (used by the tests, like Django's mail outbox).
 - ``twilio``: sends through Twilio's REST API. Needs ``TWILIO_ACCOUNT_SID``,
   ``TWILIO_AUTH_TOKEN`` and ``SMS_FROM`` (a Twilio number or approved sender ID).
+- ``aws``: sends through AWS End User Messaging SMS in ``SMS_AWS_REGION``. Uses the standard AWS
+  credentials (``AWS_ACCESS_KEY_ID`` / ``AWS_SECRET_ACCESS_KEY`` in .env) of an IAM user allowed to call
+  ``sms-voice:SendTextMessage``. ``SMS_FROM`` is optional: a registered sender ID (e.g. ``ask231``) or
+  phone number; when empty, AWS picks one.
 
 Another provider can be added as one more branch in ``send_sms``.
 """
@@ -36,6 +40,8 @@ def send_sms(to, body):
         print(f"--- SMS to {to} ---\n{body}\n---", flush=True)
     elif backend == "twilio":
         _send_twilio(to, body)
+    elif backend == "aws":
+        _send_aws(to, body)
     else:
         raise SmsError(f"Unknown SMS_BACKEND {backend!r}")
 
@@ -63,3 +69,27 @@ def _send_twilio(to, body):
         raise SmsError(f"Twilio error {error.code}: {detail}") from error
     except urllib.error.URLError as error:
         raise SmsError(f"Could not reach Twilio: {error.reason}") from error
+
+
+_aws_client = None
+
+
+def _send_aws(to, body):
+    global _aws_client
+    import boto3
+    from botocore.exceptions import BotoCoreError, ClientError
+
+    if _aws_client is None:
+        _aws_client = boto3.client("pinpoint-sms-voice-v2", region_name=settings.SMS_AWS_REGION)
+    params = {"DestinationPhoneNumber": to, "MessageBody": body, "MessageType": "TRANSACTIONAL"}
+    if settings.SMS_FROM:
+        params["OriginationIdentity"] = settings.SMS_FROM
+    try:
+        _aws_client.send_text_message(**params)
+    except ClientError as error:
+        detail = error.response.get("Error", {})
+        logger.error("AWS SMS to %s failed: %s %s", to[:-4] + "****", detail.get("Code"), detail.get("Message"))
+        raise SmsError(f"AWS SMS error {detail.get('Code')}: {detail.get('Message')}") from error
+    except BotoCoreError as error:  # no credentials, network trouble, ...
+        logger.error("Could not reach AWS SMS: %s", error)
+        raise SmsError(f"Could not reach AWS SMS: {error}") from error
