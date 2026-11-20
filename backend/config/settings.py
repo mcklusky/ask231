@@ -68,8 +68,14 @@ if AWS_STORAGE_BUCKET_NAME:
         },
     }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+# Email. Production sends through Brevo: set BREVO_API_KEY and EMAIL_BACKEND=accounts.brevo.BrevoEmailBackend.
+# Without an EMAIL_BACKEND, Brevo is used whenever BREVO_API_KEY is set, otherwise emails print to the console.
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+BREVO_API_URL = os.getenv("BREVO_API_URL", "https://api.brevo.com/v3")
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "accounts.brevo.BrevoEmailBackend" if BREVO_API_KEY else "django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "accounts@liberiabuysell.local")
+EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "")  # sender name shown in inboxes; defaults to SITE_NAME
+EMAIL_VERIFICATION_HOURS = int(os.getenv("EMAIL_VERIFICATION_HOURS", "24"))  # how long a verification link works
 if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend":
     EMAIL_HOST = os.getenv("EMAIL_HOST", "email-smtp.us-east-1.amazonaws.com")
     EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
@@ -105,7 +111,7 @@ CORS_ALLOWED_ORIGINS = [x.strip() for x in os.getenv("CORS_ALLOWED_ORIGINS", "ht
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if x.strip()]
 # Number of proxies (e.g. Caddy/nginx/load balancer) in front of Django, so rate limits use the visitor's real IP.
 _num_proxies = os.getenv("NUM_PROXIES", "").strip()
-REST_FRAMEWORK = {"DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework_simplejwt.authentication.JWTAuthentication"], "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticatedOrReadOnly"], "DEFAULT_PAGINATION_CLASS": "config.pagination.MarketplacePagination", "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle", "rest_framework.throttling.UserRateThrottle"], "DEFAULT_THROTTLE_RATES": {"anon": "120/hour", "user": "1200/hour", "auth": "10/hour", "verification": "5/hour", "reports": "20/hour"}}
+REST_FRAMEWORK = {"DEFAULT_AUTHENTICATION_CLASSES": ["accounts.auth.VerifiedJWTAuthentication"], "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticatedOrReadOnly"], "DEFAULT_PAGINATION_CLASS": "config.pagination.MarketplacePagination", "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.AnonRateThrottle", "rest_framework.throttling.UserRateThrottle"], "DEFAULT_THROTTLE_RATES": {"anon": "120/hour", "user": "1200/hour", "auth": "10/hour", "verification": "5/hour", "verification_resend": "5/hour", "reports": "20/hour"}}
 if _num_proxies:
     REST_FRAMEWORK["NUM_PROXIES"] = int(_num_proxies)
 SIMPLE_JWT = {"ACCESS_TOKEN_LIFETIME": timedelta(minutes=15), "REFRESH_TOKEN_LIFETIME": timedelta(days=7), "ROTATE_REFRESH_TOKENS": True, "BLACKLIST_AFTER_ROTATION": True, "AUTH_HEADER_TYPES": ("Bearer",)}

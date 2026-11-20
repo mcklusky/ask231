@@ -260,13 +260,12 @@ class VerificationAndReportingTests(TestCase):
     def test_resend_verification_email_is_rate_limited(self):
         from django.core import mail
         self.client.force_authenticate(self.unverified)
-        codes = [self.client.post("/api/auth/email/verify/").status_code for _ in range(6)]
-        self.assertEqual(codes[:5], [200] * 5)
-        self.assertEqual(codes[5], 429)
-        self.assertEqual(len(mail.outbox), 5)
+        codes = [self.client.post("/api/auth/email/verify/").status_code for _ in range(2)]
+        self.assertEqual(codes, [200, 429])  # one link a minute per account
+        self.assertEqual(len(mail.outbox), 1)
         self.client.force_authenticate(self.seller)
         self.client.post("/api/auth/email/verify/")
-        self.assertEqual(len(mail.outbox), 5)  # already verified: no email sent
+        self.assertEqual(len(mail.outbox), 1)  # already verified: no email sent
 
 
 class NewMessageNotificationTests(TestCase):

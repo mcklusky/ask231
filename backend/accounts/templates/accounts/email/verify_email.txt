@@ -1,0 +1,14 @@
+{% autoescape off %}Hi {{ name }},
+
+Thanks for creating an account on {{ brand }}, the marketplace for buying and selling in {{ country }}.
+
+Confirm your email address by opening this link:
+{{ link }}
+
+The link works once and expires in {{ hours }} hours.
+
+Didn't sign up for {{ brand }}? You can safely ignore this email. No account will be activated without this link.
+
+{{ brand }}
+{{ site_url }}
+{% endautoescape %}

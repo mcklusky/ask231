@@ -1,7 +1,8 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
-from django.core import signing
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
@@ -14,16 +15,22 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.exceptions import Throttled, ValidationError
+from .auth import VerifiedTokenObtainPairSerializer
+from .email_verification import VerificationResult, can_send_link, confirm_token, send_verification_email
 from .models import PhoneCode, SellerProfile, UserProfile
 from .phone import check_code, issue_code, mask_phone, normalize_phone
-from .serializers import EmailTokenSerializer, PasswordResetConfirmSerializer, PasswordResetRequestSerializer, PhonePasswordResetSerializer, PhoneSendCodeSerializer, PhoneVerifySerializer, ProfileSerializer, RegistrationSerializer, format_phone, release_unverified_phone
+from .serializers import EmailTokenSerializer, ResendVerificationSerializer, PasswordResetConfirmSerializer, PasswordResetRequestSerializer, PhonePasswordResetSerializer, PhoneSendCodeSerializer, PhoneVerifySerializer, ProfileSerializer, RegistrationSerializer, format_phone, release_unverified_phone
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 class AuthThrottle(AnonRateThrottle):
     scope = "auth"
 class VerificationEmailThrottle(UserRateThrottle):
     scope = "verification"
+class VerificationResendThrottle(AnonRateThrottle):
+    scope = "verification_resend"
 class ThrottledTokenObtainPairView(TokenObtainPairView):
+    serializer_class = VerifiedTokenObtainPairSerializer
     throttle_classes = [AuthThrottle]
 class ThrottledTokenRefreshView(TokenRefreshView):
     throttle_classes = [AuthThrottle]
@@ -31,10 +38,18 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegistrationSerializer
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AuthThrottle]
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        if user.email:
-            send_verification_email(user)
+        email_sent = send_verification_email(user)
+        self.text_phone_code(user)
+        if email_sent:
+            detail = f"Account created. We sent a verification link to {user.email}. Open it to activate your account."
+        else:
+            detail = "Account created, but we couldn't send the verification email just now. Use Resend email to try again."
+        return Response({**serializer.data, "detail": detail, "email_sent": email_sent, "email_verification_required": True}, status=status.HTTP_201_CREATED)
+    def text_phone_code(self, user):
         if user.phone_number:
             try:
                 issue_code(user.phone_number, PhoneCode.Purpose.VERIFY, user)
@@ -63,10 +78,6 @@ class LogoutView(APIView):
         except (TokenError, AttributeError):
             return Response({"detail": "A valid refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_204_NO_CONTENT)
-def send_verification_email(user):
-    token = signing.dumps({"user_id": user.pk}, salt="email-verification")
-    link = f"{settings.FRONTEND_URL}/verify-email?token={token}"
-    send_mail(f"Verify your {settings.SITE_NAME} email", f"Verify your email address: {link}", settings.DEFAULT_FROM_EMAIL, [user.email])
 
 
 class PhoneSendCodeView(APIView):
@@ -151,7 +162,10 @@ class PasswordResetRequestView(APIView):
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
             link = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
-            send_mail("Reset your password", f"Reset your password using this link: {link}", settings.DEFAULT_FROM_EMAIL, [user.email])
+            try:
+                send_mail("Reset your password", f"Reset your password using this link: {link}", settings.DEFAULT_FROM_EMAIL, [user.email])
+            except Exception:  # same answer either way; the failure is logged for staff
+                logger.exception("Could not send the password reset email for user %s", user.pk)
         return Response({"detail": "If an account exists for that email, reset instructions have been sent."})
 class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -167,29 +181,61 @@ class PasswordResetConfirmView(APIView):
         if not default_token_generator.check_token(user, serializer.validated_data["token"]):
             return Response({"detail": "This reset link is invalid or expired."}, status=status.HTTP_400_BAD_REQUEST)
         user.set_password(serializer.validated_data["new_password"])
-        user.save(update_fields=["password"])
+        user.email_verified_at = user.email_verified_at or timezone.now()  # the link reached their inbox
+        user.save(update_fields=["password", "email_verified_at"])
         return Response({"detail": "Password updated. You can now sign in."})
 class VerifyEmailView(APIView):
+    """GET: the signed-in member's email verification status. POST: email them a new link."""
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [VerificationEmailThrottle]
+    def get_throttles(self):
+        return [] if self.request.method == "GET" else super().get_throttles()
+    def get(self, request):
+        return Response({"email": request.user.email or "", "email_verified": bool(request.user.email_verified_at)})
     def post(self, request):
         if request.user.email_verified_at:
             return Response({"detail": "Your email address is already verified."})
         if not request.user.email:
             return Response({"detail": "Add an email address first."}, status=status.HTTP_400_BAD_REQUEST)
-        send_verification_email(request.user)
+        if not can_send_link(request.user):
+            return Response({"detail": "We sent a link recently. Check your inbox and spam folder, or try again in a few minutes."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        if not send_verification_email(request.user):
+            return Response({"detail": "We couldn't send the email just now. Please try again in a few minutes."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         return Response({"detail": "Verification email sent."})
+
+
+class ResendVerificationEmailView(APIView):
+    """Signed-out resend. Always gives the same answer, so it can't be used to find out who has an account."""
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+    throttle_classes = [VerificationResendThrottle]
+    def post(self, request):
+        serializer = ResendVerificationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = User.objects.filter(email__iexact=serializer.validated_data["email"], is_active=True, email_verified_at__isnull=True).first()
+        if user and can_send_link(user):
+            send_verification_email(user)
+        return Response({"detail": "If that address belongs to an account that still needs verifying, we've sent a new link. Check your inbox and spam folder."})
+
+
+VERIFY_ERRORS = {
+    VerificationResult.INVALID: "This verification link is not valid. Check that you opened the whole link, or ask for a new one.",
+    VerificationResult.EXPIRED: "This verification link has expired. Ask for a new one below.",
+    VerificationResult.USED: "This verification link has already been used or replaced by a newer one.",
+}
+
+
 class VerifyEmailConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
+    authentication_classes = []
     throttle_classes = [AuthThrottle]
     def post(self, request):
         serializer = EmailTokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            payload = signing.loads(serializer.validated_data["token"], salt="email-verification", max_age=86400)
-            user = User.objects.get(pk=payload["user_id"], is_active=True)
-        except (signing.BadSignature, signing.SignatureExpired, User.DoesNotExist, KeyError):
-            return Response({"detail": "This verification link is invalid or expired."}, status=status.HTTP_400_BAD_REQUEST)
-        user.email_verified_at = timezone.now()
-        user.save(update_fields=["email_verified_at"])
-        return Response({"detail": "Email verified successfully."})
+        result, user = confirm_token(serializer.validated_data["token"])
+        if result == VerificationResult.VERIFIED:
+            return Response({"detail": "Email verified. You can now sign in.", "code": result})
+        body = {"detail": VERIFY_ERRORS[result], "code": result}
+        if result == VerificationResult.USED and user is not None and user.email_verified_at:
+            body = {"detail": "Your email address is already verified. You can sign in.", "code": "already_verified"}
+        return Response(body, status=status.HTTP_400_BAD_REQUEST)

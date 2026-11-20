@@ -28,9 +28,14 @@ class PhoneSignInTests(TestCase):
         return re.search(r"\b(\d{6})\b", sms.outbox[-1]["body"]).group(1)
 
     def register_by_phone(self, phone="0770 123 456", **extra):
-        response = self.client.post("/api/auth/register/", {"first_name": "Musu", "last_name": "Toe", "phone_number": phone, "password": PASSWORD, **extra}, format="json")
+        """Sign up with an email plus a phone number, then confirm the email (sign-in needs it)."""
+        response = self.client.post("/api/auth/register/", {"first_name": "Musu", "last_name": "Toe", "email": "musu@example.com", "phone_number": phone, "password": PASSWORD, **extra}, format="json")
         self.assertEqual(response.status_code, 201, response.data)
-        return User.objects.get(phone_number="+231770123456")
+        user = User.objects.get(phone_number="+231770123456")
+        User.objects.filter(pk=user.pk).update(email_verified_at=timezone.now())
+        mail.outbox.clear()
+        user.refresh_from_db()
+        return user
 
     def sign_in(self, identifier, password=PASSWORD):
         return self.client.post("/api/auth/token/", {"email": identifier, "password": password}, format="json")
@@ -46,11 +51,10 @@ class PhoneSignInTests(TestCase):
             with self.assertRaises(ValidationError):
                 normalize_phone(bad)
 
-    def test_sign_up_with_phone_only_verify_by_sms_and_sign_in_with_phone(self):
+    def test_phone_added_at_sign_up_is_verified_by_sms_and_signs_in(self):
         user = self.register_by_phone()
-        self.assertIsNone(user.email)
+        self.assertEqual(user.email, "musu@example.com")
         self.assertIsNone(user.phone_verified_at)
-        self.assertEqual(len(mail.outbox), 0)
         self.assertEqual(sms.outbox[-1]["to"], "+231770123456")
         self.assertEqual(user.profile.phone_number, "+231 770 123 456")
 
@@ -58,7 +62,7 @@ class PhoneSignInTests(TestCase):
         self.assertEqual(tokens.status_code, 200, tokens.data)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens.data['access']}")
         profile = self.client.get("/api/auth/profile/").data
-        self.assertEqual((profile["email"], profile["login_phone"], profile["phone_verified"]), ("", "+231770123456", False))
+        self.assertEqual((profile["email"], profile["login_phone"], profile["phone_verified"]), ("musu@example.com", "+231770123456", False))
 
         self.assertEqual(self.client.post("/api/auth/phone/verify/", {"code": "000000" if self.last_code() != "000000" else "111111"}, format="json").status_code, 400)
         verified = self.client.post("/api/auth/phone/verify/", {"code": self.last_code()}, format="json")
@@ -69,6 +73,8 @@ class PhoneSignInTests(TestCase):
 
     def test_verified_phone_unlocks_posting_and_messaging(self):
         user = self.register_by_phone()
+        # An account from before email verification was mandatory: signs in, but nothing confirmed yet.
+        User.objects.filter(pk=user.pk).update(email_verified_at=None, email_verification_required=False)
         self.authenticate()
         self.assertEqual(self.client.post("/api/market/messages/conversations/", {"advertisement_slug": "anything"}, format="json").status_code, 403)
         User.objects.filter(pk=user.pk).update(phone_verified_at=timezone.now())
@@ -105,7 +111,7 @@ class PhoneSignInTests(TestCase):
     def test_verified_number_cannot_be_registered_again(self):
         user = self.register_by_phone()
         User.objects.filter(pk=user.pk).update(phone_verified_at=timezone.now())
-        response = self.client.post("/api/auth/register/", {"first_name": "A", "last_name": "B", "phone_number": "0770123456", "password": PASSWORD}, format="json")
+        response = self.client.post("/api/auth/register/", {"first_name": "A", "last_name": "B", "email": "another@example.com", "phone_number": "0770123456", "password": PASSWORD}, format="json")
         self.assertEqual(response.status_code, 400)
         self.assertIn("phone_number", response.data)
 
@@ -138,9 +144,11 @@ class PhoneSignInTests(TestCase):
         self.assertEqual(self.sign_in("0770123456", "AnotherPass!2026").status_code, 200)
         self.assertIsNotNone(User.objects.get(phone_number="+231770123456").phone_verified_at)
 
-    def test_registration_needs_email_or_phone(self):
-        response = self.client.post("/api/auth/register/", {"first_name": "A", "last_name": "B", "password": PASSWORD}, format="json")
+    def test_registration_needs_an_email_address(self):
+        response = self.client.post("/api/auth/register/", {"first_name": "A", "last_name": "B", "phone_number": "0770123456", "password": PASSWORD}, format="json")
         self.assertEqual(response.status_code, 400)
+        self.assertIn("email", response.data)
+        self.assertFalse(User.objects.exists())
 
     def test_seller_email_is_never_shown_on_ads(self):
         from marketplace.models import Advertisement, Category, County, SubCategory, Town
@@ -158,6 +166,8 @@ class PhoneSignInTests(TestCase):
         seller = self.register_by_phone()
         User.objects.filter(pk=seller.pk).update(phone_verified_at=timezone.now())
         seller.refresh_from_db()
+        seller.profile.email_on_new_message = False
+        seller.profile.save()
         sms.outbox.clear()
         buyer = User.objects.create_user(email="buyer@example.com", password=PASSWORD, first_name="Kofi", email_verified_at=timezone.now())
         category = Category.objects.get(name="Vehicles")
@@ -171,7 +181,7 @@ class PhoneSignInTests(TestCase):
         self.assertEqual(sms.outbox[0]["to"], "+231770123456")
         self.assertIn("Toyota Hilux", sms.outbox[0]["body"])
         self.assertIn(f"/messages/{conversation.id}", sms.outbox[0]["body"])
-        self.assertEqual(len(mail.outbox), 0)  # no email address on this account
+        self.assertEqual(len(mail.outbox), 0)  # email alerts turned off
 
         seller.profile.sms_on_new_message = False
         seller.profile.save()

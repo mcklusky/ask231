@@ -79,6 +79,19 @@ export const phoneApi = {
   confirmReset: (phone_number: string, code: string, new_password: string) => api.post<{ detail: string }>('/auth/password-reset/phone/', { phone_number, code, new_password }),
 }
 
+/** Email verification links (signed-out). The signed-in resend lives in marketplaceApi.resendVerificationEmail. */
+export type VerifyEmailResult = { detail: string; code: 'verified' | 'invalid' | 'expired' | 'used' | 'already_verified' }
+export const emailVerificationApi = {
+  confirm: (token: string) => api.post<VerifyEmailResult>('/auth/email/verify/confirm/', { token }),
+  resend: (email: string) => api.post<{ detail: string }>('/auth/email/verify/resend/', { email }),
+}
+
+/** Sign-in was refused because the account hasn't confirmed its email yet. Returns that email, or null. */
+export function unverifiedEmailFrom(error: unknown): string | null {
+  const data = axios.isAxiosError(error) ? error.response?.data as { code?: string; email?: string } | undefined : undefined
+  return data?.code === 'email_not_verified' ? data.email || '' : null
+}
+
 /** "+231770123456" -> "+231 770 123 456" */
 export function formatPhone(phone: string) {
   const match = phone.match(/^\+231(\d{3})(\d{3})(\d{3})$/)

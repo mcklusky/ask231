@@ -1,13 +1,13 @@
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 from .models import COUNTIES, SellerProfile, User, UserProfile
 from .phone import normalize_phone
 
 class RegistrationSerializer(serializers.ModelSerializer):
-    """Sign up with an email address, a phone number, or both."""
-    email = serializers.EmailField(required=False, allow_blank=True)
+    """Sign up with an email address (required, confirmed before first sign-in) and optionally a phone number."""
+    email = serializers.EmailField(error_messages={"required": "Enter your email address.", "blank": "Enter your email address."})
     password = serializers.CharField(write_only=True, validators=[validate_password])
     phone_number = serializers.CharField(write_only=True, required=False, allow_blank=True)
     seller_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
@@ -26,17 +26,18 @@ class RegistrationSerializer(serializers.ModelSerializer):
         if User.objects.filter(phone_number=phone, phone_verified_at__isnull=False).exists():
             raise serializers.ValidationError("An account with this phone number already exists. Sign in or reset your password.")
         return phone
-    def validate(self, attrs):
-        if not attrs.get("email") and not attrs.get("phone_number"):
-            raise serializers.ValidationError({"phone_number": "Enter a phone number or an email address."})
-        return attrs
-    @transaction.atomic
     def create(self, validated_data):
+        try:
+            return self._create(validated_data)
+        except IntegrityError:  # two sign-ups with the same address at the same moment
+            raise serializers.ValidationError({"email": ["An account with this email address already exists."]})
+    @transaction.atomic
+    def _create(self, validated_data):
         phone = validated_data.pop("phone_number", "")
         seller_name = validated_data.pop("seller_name", "")
         if phone:
             release_unverified_phone(phone)
-        user = User.objects.create_user(password=validated_data.pop("password"), phone_number=phone or None, **validated_data)
+        user = User.objects.create_user(password=validated_data.pop("password"), phone_number=phone or None, email_verification_required=True, **validated_data)
         UserProfile.objects.create(user=user, phone_number=format_phone(phone) if phone else "")
         if seller_name:
             SellerProfile.objects.create(user=user, business_name=seller_name)
@@ -135,4 +136,6 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             raise serializers.ValidationError(exc.messages)
         return value
 class EmailTokenSerializer(serializers.Serializer):
-    token = serializers.CharField()
+    token = serializers.CharField(max_length=200)
+class ResendVerificationSerializer(serializers.Serializer):
+    email = serializers.EmailField()

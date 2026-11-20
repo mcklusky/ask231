@@ -42,6 +42,10 @@ class User(AbstractUser):
     # A member signs up with an email address, a phone number, or both.
     email = models.EmailField(unique=True, db_index=True, null=True, blank=True)
     email_verified_at = models.DateTimeField(null=True, blank=True)
+    # Set for accounts created through sign-up since email verification became mandatory. Such
+    # accounts can't sign in or use the API until they open the link we email them. Older accounts
+    # (and ones staff create) keep False, so nobody who could sign in before is locked out.
+    email_verification_required = models.BooleanField(default=False, help_text="Must confirm their email address before they can sign in.")
     phone_number = models.CharField(max_length=16, unique=True, null=True, blank=True, help_text="Sign-in phone number in international format, e.g. +231770123456.")
     phone_verified_at = models.DateTimeField(null=True, blank=True)
     USERNAME_FIELD = "email"
@@ -51,6 +55,10 @@ class User(AbstractUser):
     @property
     def has_verified_contact(self):
         return bool(self.email_verified_at or self.phone_verified_at)
+
+    @property
+    def needs_email_verification(self):
+        return bool(self.email_verification_required and not self.email_verified_at)
 
     def __str__(self):
         return self.email or self.phone_number or f"User {self.pk}"
@@ -74,6 +82,18 @@ class PhoneCode(models.Model):
     expires_at = models.DateTimeField()
     used_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+class EmailVerificationToken(models.Model):
+    """A one-time email verification link. Only a SHA-256 hash of the token is stored."""
+    user = models.ForeignKey("User", on_delete=models.CASCADE, related_name="email_verification_tokens")
+    email = models.EmailField(help_text="The address the link was sent to; the link only verifies this address.")
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True, help_text="When the link was used, or replaced by a newer one.")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    def __str__(self):
+        return f"Verification link for {self.email}"
 
 class UserProfile(models.Model):
     CURRENCIES = [("LRD", "Liberian Dollar"), ("USD", "US Dollar")]

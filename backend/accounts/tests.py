@@ -1,10 +1,11 @@
 from django.core import mail
 from django.contrib.auth.tokens import default_token_generator
-from django.core import signing
 from django.test import TestCase
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APIClient
+from django.utils import timezone
+from .email_verification import send_verification_email
 from .models import User
 
 class AuthenticationTests(TestCase):
@@ -16,6 +17,7 @@ class AuthenticationTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(len(mail.outbox), 1)
         user = User.objects.get(email="seller@example.com")
+        User.objects.filter(pk=user.pk).update(email_verified_at=timezone.now())
         self.assertTrue(user.check_password(self.payload["password"]))
         self.assertEqual(user.profile.country_code, "+231")
         self.assertEqual(user.seller_profile.business_name, "Amara Goods")
@@ -40,7 +42,8 @@ class AuthenticationTests(TestCase):
         self.assertEqual(login.status_code, 200)
     def test_email_verification_confirms_account(self):
         user = User.objects.create_user(email="verify@example.com", password="StrongPass!2026")
-        token = signing.dumps({"user_id": user.pk}, salt="email-verification")
+        send_verification_email(user)
+        token = mail.outbox[-1].body.split("token=")[1].split()[0]
         response = self.client.post("/api/auth/email/verify/confirm/", {"token": token}, format="json")
         self.assertEqual(response.status_code, 200)
         user.refresh_from_db()
