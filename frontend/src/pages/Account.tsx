@@ -32,6 +32,14 @@ export default function Account() {
   const [savingAlerts, setSavingAlerts] = useState<'email' | 'sms' | null>(null)
   const navigate = useNavigate()
 
+  // Arrived from the emailed verification link, which also signed them in.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('verified') !== '1') return
+    toast.success('Email verified', { description: `Welcome to ${SITE_NAME}! Your account is ready.` })
+    navigate('/account', { replace: true })
+  }, [navigate])
+
   useEffect(() => {
     api.get<Profile>('/auth/profile/')
       .then(({ data }) => { setProfile(data); setForm(data) })

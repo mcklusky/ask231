@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { api, SESSION_EXPIRED_EVENT, type Profile, type Tokens } from './api'
 import { clearSavedData } from './pwa'
 
-type AuthContextValue = { profile: Profile | null; ready: boolean; setProfile: (profile: Profile | null) => void; login: (identifier: string, password: string) => Promise<void>; logout: () => Promise<void> }
+type AuthContextValue = { profile: Profile | null; ready: boolean; setProfile: (profile: Profile | null) => void; login: (identifier: string, password: string) => Promise<void>; signInWithTokens: (tokens: Tokens) => Promise<void>; logout: () => Promise<void> }
 const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -21,15 +21,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired)
   }, [])
-  const value = useMemo<AuthContextValue>(() => ({
-    profile, ready, setProfile,
+  const value = useMemo<AuthContextValue>(() => {
+    async function signInWithTokens(tokens: Tokens) {
+      localStorage.setItem('marketday.access', tokens.access)
+      localStorage.setItem('marketday.refresh', tokens.refresh)
+      const result = await api.get<Profile>('/auth/profile/')
+      setProfile(result.data)
+    }
+    return {
+    profile, ready, setProfile, signInWithTokens,
     async login(identifier, password) {
       // The sign-in field is called "email" by the API but accepts an email address or a phone number.
       const { data } = await api.post<Tokens>('/auth/token/', { email: identifier.trim(), password })
-      localStorage.setItem('marketday.access', data.access)
-      localStorage.setItem('marketday.refresh', data.refresh)
-      const result = await api.get<Profile>('/auth/profile/')
-      setProfile(result.data)
+      await signInWithTokens(data)
     },
     async logout() {
       const refresh = localStorage.getItem('marketday.refresh')
@@ -38,7 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void clearSavedData()
       }
     },
-  }), [profile, ready])
+    }
+  }, [profile, ready])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 export function useAuth() { const value = useContext(AuthContext); if (!value) throw new Error('useAuth must be used inside AuthProvider'); return value }

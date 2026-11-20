@@ -80,7 +80,7 @@ export const phoneApi = {
 }
 
 /** Email verification links (signed-out). The signed-in resend lives in marketplaceApi.resendVerificationEmail. */
-export type VerifyEmailResult = { detail: string; code: 'verified' | 'invalid' | 'expired' | 'used' | 'already_verified' }
+export type VerifyEmailResult = { detail: string; code: 'verified' | 'invalid' | 'expired' | 'used' | 'already_verified'; access?: string; refresh?: string }
 export const emailVerificationApi = {
   confirm: (token: string) => api.post<VerifyEmailResult>('/auth/email/verify/confirm/', { token }),
   resend: (email: string) => api.post<{ detail: string }>('/auth/email/verify/resend/', { email }),

@@ -234,7 +234,11 @@ class VerifyEmailConfirmView(APIView):
         serializer.is_valid(raise_exception=True)
         result, user = confirm_token(serializer.validated_data["token"])
         if result == VerificationResult.VERIFIED:
-            return Response({"detail": "Email verified. You can now sign in.", "code": result})
+            # Opening the emailed link proves they own the inbox, so sign them straight in
+            # (only on the link's first use; used, expired and invalid links never sign anyone in).
+            refresh = RefreshToken.for_user(user)
+            User.objects.filter(pk=user.pk).update(last_login=timezone.now())
+            return Response({"detail": "Email verified. Welcome!", "code": result, "access": str(refresh.access_token), "refresh": str(refresh)})
         body = {"detail": VERIFY_ERRORS[result], "code": result}
         if result == VerificationResult.USED and user is not None and user.email_verified_at:
             body = {"detail": "Your email address is already verified. You can sign in.", "code": "already_verified"}

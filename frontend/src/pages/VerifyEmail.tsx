@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { ArrowRight, CircleAlert, CircleCheck, Loader2 } from 'lucide-react'
-import { api, emailVerificationApi, type Profile, type VerifyEmailResult } from '../lib/api'
+import { emailVerificationApi, type VerifyEmailResult } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import AuthLayout from '../components/AuthLayout'
 import ResendVerificationEmail from '../components/ResendVerificationEmail'
@@ -25,7 +25,8 @@ const COPY: Record<State, { title: string; subtitle: string }> = {
 export default function VerifyEmail() {
   const [params] = useSearchParams()
   const token = params.get('token') || ''
-  const { profile, setProfile } = useAuth()
+  const { profile, signInWithTokens } = useAuth()
+  const navigate = useNavigate()
   const [state, setState] = useState<State>(token ? 'loading' : 'invalid')
   const [detail, setDetail] = useState('')
   // A link works only once, so never send the same token twice (React runs effects twice in development).
@@ -35,18 +36,21 @@ export default function VerifyEmail() {
     if (!token || checked.current === token) return
     checked.current = token
     emailVerificationApi.confirm(token)
-      .then(({ data }) => { setState('verified'); setDetail(data.detail) })
+      .then(async ({ data }) => {
+        setDetail(data.detail)
+        // The link signs them in, so they land in their account without typing the password again.
+        if (data.access && data.refresh) {
+          try { await signInWithTokens({ access: data.access, refresh: data.refresh }); navigate('/account?verified=1', { replace: true }); return }
+          catch { /* fall back to the "sign in" button below */ }
+        }
+        setState('verified')
+      })
       .catch(error => {
         const data = axios.isAxiosError(error) ? error.response?.data as Partial<VerifyEmailResult> | undefined : undefined
         const code = data?.code && data.code in COPY ? data.code as State : 'failed'
         setState(code); setDetail(code === 'failed' ? messageFromError(error, 'Please try again in a moment.') : data?.detail || '')
       })
-  }, [token])
-
-  // Members who are already signed in (older accounts) see their badge update straight away.
-  useEffect(() => {
-    if (state === 'verified' && profile && !profile.email_verified) api.get<Profile>('/auth/profile/').then(({ data }) => setProfile(data)).catch(() => {})
-  }, [state, profile, setProfile])
+  }, [token, signInWithTokens, navigate])
 
   const good = state === 'verified' || state === 'already_verified'
   const Icon = state === 'loading' ? Loader2 : good ? CircleCheck : CircleAlert

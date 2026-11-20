@@ -39,6 +39,7 @@ class EmailVerificationFlowTests(TestCase):
         EmailVerificationToken.objects.update(created_at=timezone.now() - timedelta(minutes=minutes))
 
     # --- registration ---------------------------------------------------------------------
+    @override_settings(EMAIL_FROM_NAME="")  # subject falls back to SITE_NAME, whatever the local .env says
     def test_registration_creates_an_unverified_account_and_emails_a_link(self):
         response = self.register()
         self.assertEqual(response.status_code, 201, response.data)
@@ -95,6 +96,29 @@ class EmailVerificationFlowTests(TestCase):
         response = self.sign_in(password="wrong-password")
         self.assertEqual(response.status_code, 401)
         self.assertNotIn("email", response.data)
+
+    def test_verifying_signs_you_in_once(self):
+        self.register()
+        token = self.token_from(mail.outbox[0])
+        response = self.confirm(token)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
+        profile = self.client.get("/api/auth/profile/")
+        self.assertEqual(profile.status_code, 200)
+        self.assertEqual(profile.data["email"], "amara@example.com")
+        self.assertTrue(profile.data["email_verified"])
+        self.client.credentials()
+        again = self.confirm(token)  # a used link never hands out another sign-in
+        self.assertEqual(again.status_code, 400)
+        self.assertNotIn("access", again.data)
+
+    def test_failed_links_never_sign_anyone_in(self):
+        self.register()
+        EmailVerificationToken.objects.update(expires_at=timezone.now() - timedelta(seconds=1))
+        for response in [self.confirm(self.token_from(mail.outbox[0])), self.confirm("not-a-real-token")]:
+            self.assertEqual(response.status_code, 400)
+            self.assertNotIn("access", response.data)
+            self.assertNotIn("refresh", response.data)
 
     def test_verifying_then_signing_in(self):
         self.register()
