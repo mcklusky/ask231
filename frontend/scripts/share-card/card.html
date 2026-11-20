@@ -1,0 +1,56 @@
+<!doctype html>
+<!--
+  The 1200x630 link-preview picture (frontend/public/og-default.png) shown by WhatsApp, Facebook and X.
+  Regenerate after a brand or colour change (Git Bash, from frontend/). Edge cannot save into a path
+  containing "&" (this project folder), so point --screenshot at a temp folder and copy the PNG over:
+    "/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" --headless=new --hide-scrollbars \
+      --force-device-scale-factor=1 --window-size=1200,630 --virtual-time-budget=10000 \
+      --screenshot="$(cygpath -w "$PWD")\\public\\og-default.png" "file:///$PWD/scripts/share-card/card.html"
+  Colours match src/styles.css (primary #0f5c5c, accent #b85a24, sand #f7f4ef); bag matches public/favicon.svg.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body { background: #0f5c5c; color: #fff; font-family: 'DM Sans', sans-serif; position: relative; }
+  .glow { position: absolute; right: -160px; top: -120px; width: 760px; height: 760px; border-radius: 50%; background: radial-gradient(circle, #1b7a77 0%, #0f5c5c 68%); }
+  .left { position: absolute; left: 88px; top: 92px; width: 640px; }
+  .brand { display: flex; align-items: center; gap: 24px; }
+  .mark { width: 112px; height: 112px; }
+  .word { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 92px; letter-spacing: -2px; line-height: 1; }
+  .word b { color: #f7a072; }
+  h1 { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 60px; line-height: 1.12; letter-spacing: -1px; margin-top: 64px; }
+  p { font-size: 28px; color: #cfe6e4; margin-top: 26px; }
+  .bag { position: absolute; right: 96px; top: 118px; width: 360px; height: 360px; filter: drop-shadow(0 24px 40px rgba(0,0,0,.25)); }
+  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 22px; background: #b85a24; }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="left">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 512 512" aria-hidden="true">
+        <rect width="512" height="512" rx="116" fill="#ffffff"/>
+        <g transform="translate(44 30) scale(0.83)">
+          <path d="M164 186 V160 a92 80 0 0 1 184 0 V186" fill="none" stroke="#0f5c5c" stroke-width="34" stroke-linecap="round"/>
+          <path d="M110 176 H402 L424 426 a24 24 0 0 1 -24 26 H112 a24 24 0 0 1 -24 -26 Z" fill="#0f5c5c"/>
+          <path d="M110 176 H402 L407 236 H105 Z" fill="#b85a24"/>
+        </g>
+      </svg>
+      <div class="word">ask<b>231</b></div>
+    </div>
+    <h1>Buy, sell &amp; ask for anything in Liberia.</h1>
+    <p>Phones · Cars · Homes · Jobs · Services · Wanted</p>
+  </div>
+  <svg class="bag" viewBox="0 0 512 512" aria-hidden="true">
+    <path d="M164 186 V160 a92 80 0 0 1 184 0 V186" fill="none" stroke="#ffffff" stroke-width="30" stroke-linecap="round"/>
+    <path d="M110 176 H402 L424 426 a24 24 0 0 1 -24 26 H112 a24 24 0 0 1 -24 -26 Z" fill="#ffffff"/>
+    <path d="M110 176 H402 L407 236 H105 Z" fill="#b85a24"/>
+    <circle cx="164" cy="210" r="9" fill="#f7f4ef"/><circle cx="348" cy="210" r="9" fill="#f7f4ef"/>
+  </svg>
+  <div class="bar"></div>
+</body>
+</html>

@@ -487,5 +487,5 @@ class ShareLinkPreviewTests(TestCase):
     def test_ad_without_photo_uses_branded_site_image(self):
         ad = Advertisement.objects.create(status=Advertisement.Status.ACTIVE, title="No photo bike", **self.fields)
         html = self.client.get(f"/s/{ad.slug}/").content.decode()
-        self.assertIn('<meta property="og:image" content="https://marketday.example/og-default.png">', html)
+        self.assertIn('<meta property="og:image" content="https://marketday.example/og-default.png?v=2">', html)
         self.assertIn('<meta name="twitter:card" content="summary_large_image">', html)

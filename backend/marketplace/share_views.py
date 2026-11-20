@@ -38,7 +38,7 @@ def listing_share(request, slug):
     frontend = settings.FRONTEND_URL.rstrip("/")
     share_url = request.build_absolute_uri()
     # Branded 1200x630 card (frontend/public/og-default.png) for ads without photos.
-    default_image = {"url": f"{frontend}/og-default.png", "width": 1200, "height": 630, "alt": f"{settings.SITE_NAME}: buy, sell and ask for anything in {settings.COUNTRY_NAME}"}
+    default_image = {"url": f"{frontend}/og-default.png?v=2", "width": 1200, "height": 630, "alt": f"{settings.SITE_NAME}: buy, sell and ask for anything in {settings.COUNTRY_NAME}"}
     ad = (Advertisement.objects.filter(slug=slug, status=Advertisement.Status.ACTIVE)
           .select_related("county", "town", "category").prefetch_related("images").first())
     if ad is None:
