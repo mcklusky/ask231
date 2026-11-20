@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { Download, Share, Smartphone, SquarePlus, WifiOff, X } from 'lucide-react'
-import { isPhoneOrTablet, useInstallApp, useOnline } from '@/lib/pwa'
+import { Download, EllipsisVertical, Loader2, Share, Smartphone, SquarePlus, WifiOff, X } from 'lucide-react'
+import { isPhoneOrTablet, isStandalone, useInstallApp, useOnline } from '@/lib/pwa'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -86,6 +86,59 @@ function IosInstallSteps({ open, onOpenChange }: { open: boolean; onOpenChange: 
   )
 }
 
+/** Drop ?install=1 from the address so a reload or a shared link doesn't pop the window up again. */
+function forgetQrFlag() {
+  try {
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has('install')) return
+    url.searchParams.delete('install')
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
+  } catch { /* old browser */ }
+}
+
+/**
+ * Opened from the QR code on a phone: go straight to installing instead of making people find the
+ * install card. Browsers always ask the person to confirm, so on Android this is: tap Install, then
+ * confirm. iPhones can only add apps from Safari's Share menu, so they see those two steps right away.
+ */
+function QrInstallWindow() {
+  const app = useInstallApp()
+  const [open, setOpen] = useState(() => cameFromQrCode() && isPhoneOrTablet() && !isStandalone())
+  // Chrome needs a moment after the page loads before it offers installing.
+  const [waited, setWaited] = useState(false)
+  useEffect(() => { if (!open) return; const timer = window.setTimeout(() => setWaited(true), 4000); return () => window.clearTimeout(timer) }, [open])
+  function close(next: boolean) { setOpen(next); if (!next) forgetQrFlag() }
+  async function install() { if (await app.install()) close(false) }
+  if (!open) return null
+  const step = (icon: JSX.Element, text: JSX.Element) => <li className="flex items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-primary dark:text-brand-primary">{icon}</span><span>{text}</span></li>
+  return (
+    <Dialog open={open} onOpenChange={close}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader className="items-center text-center">
+          <img src="/icons/icon-192.png" alt="" className="mb-1 size-16 rounded-2xl" />
+          <DialogTitle>Install {SITE_NAME}</DialogTitle>
+          <DialogDescription>Free, small and quick on weak data. No Play Store or App Store needed.</DialogDescription>
+        </DialogHeader>
+        {app.canPrompt
+          ? <Button variant="cta" size="lg" className="w-full" onClick={() => void install()}><Download />Install app</Button>
+          : app.ios
+            ? <ol className="grid gap-3 text-sm">
+                {step(<Share className="size-5" aria-hidden="true" />, <>Tap the <b>Share</b> button at the bottom of Safari.</>)}
+                {step(<SquarePlus className="size-5" aria-hidden="true" />, <>Choose <b>Add to Home Screen</b>, then tap <b>Add</b>.</>)}
+              </ol>
+            : !waited
+              ? <p className="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" aria-hidden="true" />Getting the app ready…</p>
+              : <ol className="grid gap-3 text-sm">
+                  {step(<EllipsisVertical className="size-5" aria-hidden="true" />, <>Tap the <b>⋮ menu</b> at the top right of your browser.</>)}
+                  {step(<SquarePlus className="size-5" aria-hidden="true" />, <>Choose <b>Install app</b> or <b>Add to Home screen</b>.</>)}
+                  <li className="text-xs text-muted-foreground">Don't see it? Tap <b>Open in Chrome</b> first. Some camera apps open links in their own small browser.</li>
+                </ol>}
+        <Button variant={app.canPrompt ? 'ghost' : 'default'} className="w-full" onClick={() => close(false)}>{app.canPrompt ? 'Not now' : 'Done'}</Button>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 /**
  * One-tap install, shared by the home page card and the account menu.
  * On a phone it installs (or shows the iPhone steps); on a computer it shows a QR code for the phone.
@@ -116,7 +169,7 @@ export function useInstallAction() {
 export function InstallAppCard() {
   const { canInstall, computer, start, dialog } = useInstallAction()
   const [hidden, setHidden] = useState(() => !cameFromQrCode() && dismissedRecently())
-  if (!canInstall || hidden) return dialog
+  if (!canInstall || hidden) return <>{dialog}<QrInstallWindow /></>
   function dismiss() {
     try { localStorage.setItem(DISMISS_KEY, String(Date.now())) } catch { /* private mode */ }
     setHidden(true)
@@ -134,6 +187,7 @@ export function InstallAppCard() {
         : <Button variant="cta" onClick={() => void start()} className="w-full shrink-0 sm:w-auto"><Download />Install</Button>}
       <button type="button" onClick={dismiss} aria-label="Not now" className="absolute right-2 top-2 grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><X className="size-4" /></button>
       {dialog}
+      <QrInstallWindow />
     </section>
   )
 }
