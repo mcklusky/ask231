@@ -2,10 +2,12 @@ from django.urls import path
 from .admin_views import ReportCreateView
 from .request_views import BuyerRequestDetailView, BuyerRequestListCreateView, BuyerRequestRespondView, MyBuyerRequestsView
 from .review_views import AdvertisementSellerReviewsView, ConversationReviewView
+from .exchange_rates import ExchangeRatesView
 from .chat_views import ConversationListCreateView, ConversationMessagesView, UnreadMessageCountView
 from .views import AdvertisementDetailView, AdvertisementImageDeleteView, AdvertisementListCreateView, CategoryDetailView, CategoryListCreateView, CountyListView, FavoriteDetailView, FavoriteListCreateView, MarkAdvertisementSoldView, MyAdvertisementsView, PopularAdvertisementListView, PromotedAdvertisementListView, TownListView
 
 urlpatterns = [
+    path("exchange-rates/", ExchangeRatesView.as_view(), name="exchange-rates"),
     path("messages/unread-count/", UnreadMessageCountView.as_view(), name="message-unread-count"),
     path("messages/conversations/<int:conversation_id>/review/", ConversationReviewView.as_view(), name="conversation-review"),
     path("messages/conversations/", ConversationListCreateView.as_view(), name="conversation-list-create"),

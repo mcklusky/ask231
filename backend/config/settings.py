@@ -91,6 +91,8 @@ COUNTRY_NAME = os.getenv("COUNTRY_NAME", "Liberia")
 DEFAULT_CURRENCY = os.getenv("DEFAULT_CURRENCY", "LRD")
 BRAND_WORD = os.getenv("BRAND_WORD", "ask")
 SITE_NAME = os.getenv("SITE_NAME", f"{BRAND_WORD}{COUNTRY_CALLING_CODE}")
+# Daily exchange rates (US$ base) for the ad form's price converter. See marketplace/exchange_rates.py.
+EXCHANGE_RATES_URL = os.getenv("EXCHANGE_RATES_URL", "https://open.er-api.com/v6/latest/USD")
 # ---------------------------------------------------------------------------
 
 # Text messages: "console" prints them (development); "aws" or "twilio" sends them. See accounts/sms.py.

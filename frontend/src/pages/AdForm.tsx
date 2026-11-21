@@ -5,6 +5,7 @@ import FormField from '../components/FormField'
 import PhoneNumberField from '../components/PhoneNumberField'
 import MarketLayout from '../components/MarketLayout'
 import VerifyEmailNotice from '../components/VerifyEmailNotice'
+import PriceConverter from '../components/listing/PriceConverter'
 import { api } from '../lib/api'
 import { type Advertisement, type Category, type County, type Town, type JobType, type PayPeriod, isJobsCategory, jobTypeLabels, marketplaceApi, payPeriodLabels } from '../lib/marketplace'
 import { messageFromError } from '../utils/errors'
@@ -55,6 +56,8 @@ export default function AdForm() {
     return names.map(name => ({ value: name, label: `${flagForCountryName(name)} ${name}`.trim() }))
   }, [form.country])
   const currencyMode = form.currency === 'LRD' || form.currency === 'USD' ? form.currency : 'OTHER'
+  // New ads are priced in US$ or the local currency (other currencies are converted below); older ads keep theirs.
+  const [keepsOtherCurrency] = useState(() => currencyMode === 'OTHER')
 
   useEffect(() => {
     let mounted = true
@@ -156,7 +159,7 @@ export default function AdForm() {
           </div>
         </Step>
 
-        <Step number="2" title={isJob ? 'Job details and pay' : 'Price and condition'} description={isJob ? 'Tell people what kind of job it is and what it pays.' : 'Pick the currency buyers will pay in.'}>
+        <Step number="2" title={isJob ? 'Job details and pay' : 'Price and condition'} description={isJob ? 'Tell people what kind of job it is and what it pays.' : 'Pick the currency buyers will pay in. Pricing in another currency? Convert it below.'}>
           {isJob && <>
             <div className="grid gap-2">
               <Label htmlFor="job_type">Type of job</Label>
@@ -169,12 +172,13 @@ export default function AdForm() {
           </>}
           <div className="grid gap-2">
             <span className="text-sm font-semibold">Currency</span>
-            <Segmented label="Currency" value={currencyMode} onChange={mode => update('currency', mode === 'OTHER' ? '' : mode)} options={[{ value: LOCAL_CURRENCY, label: `${LOCAL_CURRENCY_SYMBOL} ${COUNTRY_ADJECTIVE}` }, { value: 'USD', label: 'US$ Dollar' }, { value: 'OTHER', label: 'Other' }]} />
+            <Segmented label="Currency" value={currencyMode} onChange={mode => update('currency', mode === 'OTHER' ? '' : mode)} options={[{ value: LOCAL_CURRENCY, label: `${LOCAL_CURRENCY_SYMBOL} ${COUNTRY_ADJECTIVE}` }, { value: 'USD', label: 'US$ Dollar' }, ...(keepsOtherCurrency ? [{ value: 'OTHER', label: 'Other' }] : [])]} />
           </div>
           <div className={cn('grid gap-4', currencyMode === 'OTHER' && 'sm:grid-cols-[1fr_10rem]')}>
             <FormField label={isJob ? 'Pay' : 'Price'} name="price" type="number" inputMode="decimal" min="0.01" step="0.01" placeholder="0" prefix={currencyMode === 'LRD' ? 'L$' : currencyMode === 'USD' ? 'US$' : form.currency || '···'} value={form.price} onChange={e => update('price', e.target.value)} required />
             {currencyMode === 'OTHER' && <FormField label="Currency code" name="currency" maxLength={3} pattern="[A-Za-z]{3}" placeholder="EUR" value={form.currency} onChange={e => update('currency', e.target.value.toUpperCase())} hint="3 letters, e.g. EUR" required />}
           </div>
+          <PriceConverter country={form.country} target={currencyMode === 'OTHER' ? 'USD' : form.currency} onPrice={price => { update('price', price); if (currencyMode === 'OTHER') update('currency', 'USD') }} />
           {isJob ? (
             <div className="grid gap-2">
               <span className="text-sm font-semibold">Pay is</span>
