@@ -6,6 +6,7 @@ import PhoneNumberField from '../components/PhoneNumberField'
 import MarketLayout from '../components/MarketLayout'
 import VerifyEmailNotice from '../components/VerifyEmailNotice'
 import PriceConverter from '../components/listing/PriceConverter'
+import DescriptionHelper from '../components/listing/DescriptionHelper'
 import { api } from '../lib/api'
 import { type Advertisement, type Category, type County, type Town, type JobType, type PayPeriod, isJobsCategory, jobTypeLabels, marketplaceApi, payPeriodLabels } from '../lib/marketplace'
 import { messageFromError } from '../utils/errors'
@@ -155,6 +156,7 @@ export default function AdForm() {
           <div className="grid gap-2">
             <Label htmlFor="description">Description</Label>
             <Textarea id="description" maxLength={10000} rows={6} placeholder="Condition, size, age, what’s included, and anything buyers should know." value={form.description} onChange={e => update('description', e.target.value)} required />
+            <DescriptionHelper input={{ title: form.title, notes: form.description, category: category?.name ?? '', subcategory: category?.subcategories.find(item => String(item.id) === form.subcategory_id)?.name ?? '', condition: isJob ? '' : form.condition }} onChange={text => update('description', text)} />
             <p className="flex justify-between gap-3 text-xs text-muted-foreground"><span>Be clear and honest. Never include bank or mobile money details. <Link to="/terms#prohibited" target="_blank" className="font-medium text-primary underline underline-offset-2 dark:text-brand-primary">Listing rules</Link></span><span className="shrink-0">{form.description.length}/10,000</span></p>
           </div>
         </Step>
