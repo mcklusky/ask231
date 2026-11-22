@@ -11,8 +11,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function hydrate() {
       if (!localStorage.getItem('marketday.access') && !localStorage.getItem('marketday.refresh')) { setReady(true); return }
       // An expired access token is renewed automatically by the API client (see lib/api.ts).
+      const saved = localStorage.getItem('marketday.refresh')
       try { const { data } = await api.get<Profile>('/auth/profile/'); setProfile(data) }
-      catch { localStorage.removeItem('marketday.access'); localStorage.removeItem('marketday.refresh') }
+      catch {
+        // Only clear the old sign-in: an email link may have signed them in meanwhile.
+        if (localStorage.getItem('marketday.refresh') === saved) { localStorage.removeItem('marketday.access'); localStorage.removeItem('marketday.refresh') }
+      }
       finally { setReady(true) }
     }
     void hydrate()

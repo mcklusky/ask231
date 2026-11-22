@@ -108,9 +108,14 @@ class EmailVerificationFlowTests(TestCase):
         self.assertEqual(profile.data["email"], "amara@example.com")
         self.assertTrue(profile.data["email_verified"])
         self.client.credentials()
-        again = self.confirm(token)  # a used link never hands out another sign-in
-        self.assertEqual(again.status_code, 400)
-        self.assertNotIn("access", again.data)
+        again = self.confirm(token)  # tapping it again soon after still signs you in
+        self.assertEqual(again.status_code, 200, again.data)
+        self.assertIn("access", again.data)
+        EmailVerificationToken.objects.update(used_at=timezone.now() - timedelta(hours=2))
+        User.objects.update(email_verified_at=EmailVerificationToken.objects.get().used_at)
+        late = self.confirm(token)  # but not hours later
+        self.assertEqual(late.status_code, 400)
+        self.assertNotIn("access", late.data)
 
     def test_failed_links_never_sign_anyone_in(self):
         self.register()
@@ -170,6 +175,8 @@ class EmailVerificationFlowTests(TestCase):
         self.register()
         token = self.token_from(mail.outbox[0])
         self.assertEqual(self.confirm(token).status_code, 200)
+        EmailVerificationToken.objects.update(used_at=timezone.now() - timedelta(hours=2))
+        User.objects.update(email_verified_at=EmailVerificationToken.objects.get().used_at)
         again = self.confirm(token)
         self.assertEqual(again.status_code, 400)
         self.assertEqual(again.data["code"], "already_verified")

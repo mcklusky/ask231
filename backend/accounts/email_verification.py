@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 RESEND_COOLDOWN = timedelta(seconds=60)
 MAX_LINKS_PER_DAY = 5
+# How long a link that verified an address can be opened again to sign in (a second tap, another browser).
+REOPEN_WINDOW = timedelta(hours=1)
 
 
 def _hash(token):
@@ -90,12 +92,18 @@ def confirm_token(token):
         if entry is None or not entry.user.is_active:
             return VerificationResult.INVALID, None
         user = entry.user
-        if entry.used_at:
-            return VerificationResult.USED, user
         now = timezone.now()
+        same_address = (user.email or "").lower() == entry.email.lower()
+        if entry.used_at:
+            # Tapping the link again soon after (or after an email scanner opened it first) still
+            # signs them in, but only for the link that verified the address, and only briefly.
+            reopened = entry.used_at == user.email_verified_at and now - entry.used_at <= REOPEN_WINDOW
+            if reopened and entry.expires_at > now and same_address:
+                return VerificationResult.VERIFIED, user
+            return VerificationResult.USED, user
         if entry.expires_at <= now:
             return VerificationResult.EXPIRED, user
-        if (user.email or "").lower() != entry.email.lower():
+        if not same_address:
             return VerificationResult.INVALID, None  # the account's address changed since the link was sent
         entry.used_at = now
         entry.save(update_fields=["used_at"])
