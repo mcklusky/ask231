@@ -644,6 +644,5 @@ select option[value=""]{color:var(--muted)}
   --ui-brand-accent:22 68% 46%;--ui-brand-accent-hover:22 68% 40%;
 }
 
-/* Ad photo fills its box: a blurred copy of the same photo behind it, so nothing is cropped */
-.detail-image-backdrop{position:absolute;inset:-24px;background-size:cover;background-position:center;filter:blur(22px) saturate(1.1);opacity:.75}
-.detail-main-image>img,[data-theme="dark"] .detail-main-image>img{position:relative;background:transparent}
+/* Ad photo fills its whole box (edges may be trimmed to fit) */
+.detail-main-image>img{object-fit:cover;object-position:center}
