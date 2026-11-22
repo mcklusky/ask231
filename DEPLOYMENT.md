@@ -2,6 +2,10 @@
 
 The app now has a Docker image and supports S3 media storage, Aurora-compatible PostgreSQL configuration, and SES SMTP settings. AWS resources have not been created; the account, region, and domain are not yet selected.
 
+## Quick start: one AWS Lightsail server
+
+For launch, the simplest setup is a single Lightsail server running Caddy, Django and Postgres with Docker. Follow [deploy/lightsail/README.md](deploy/lightsail/README.md). The ECS architecture below is for when traffic outgrows one server.
+
 ## AWS target architecture
 
 - **CloudFront** serves the React application and routes API and media requests.
@@ -65,7 +69,7 @@ The exact infrastructure template and deployment commands should be selected aft
 
 ## Launching in another country
 
-The brand is the brand word plus the country calling code: Ask + 231 = Ask231. Another country runs as its own site (its own database and domain) built from the same code:
+The brand is the brand word plus the country calling code: ask + 231 = ask231. Another country runs as its own site (its own database and domain) built from the same code:
 
 1. **Backend settings:** `COUNTRY_CALLING_CODE` (e.g. `233`), `COUNTRY_NAME` (`Ghana`), `DEFAULT_CURRENCY` (`GHS`), optionally `BRAND_WORD` (default `Ask`). The site name, emails, texts, Facebook posts and link previews follow automatically.
 2. **Frontend build settings:** `VITE_COUNTRY_CODE`, `VITE_COUNTRY_NAME`, `VITE_COUNTRY_ADJECTIVE`, `VITE_COUNTRY_ISO`, `VITE_CURRENCY`, `VITE_CURRENCY_SYMBOL`, `VITE_CURRENCY_NAME` (see `frontend/.env.example` and `frontend/src/config/site.ts`). The logo, page title and app name follow automatically.

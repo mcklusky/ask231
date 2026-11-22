@@ -8,7 +8,9 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . ./
-RUN python manage.py collectstatic --noinput \
+# A throwaway key only for collectstatic; the real one comes from the environment at run time.
+RUN DJANGO_SECRET_KEY=build-only-not-secret python manage.py collectstatic --noinput \
+    && mkdir -p /app/media \
     && addgroup --system django \
     && adduser --system --ingroup django django \
     && chown -R django:django /app

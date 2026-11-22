@@ -1,0 +1,32 @@
+# Caddy gets and renews the HTTPS certificate for {$DOMAIN} by itself.
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Django: API, staff admin, share-link previews, admin styles, health check.
+	@django path /api/* /admin /admin/* /s/* /static/* /health/
+	handle @django {
+		reverse_proxy backend:8000 {
+			# Take the whole upload first, so slow phone connections don't tie up Django.
+			request_buffers 64MiB
+		}
+	}
+
+	# Listing photos, straight from disk.
+	handle /media/* {
+		root * /srv
+		header Cache-Control "public, max-age=86400"
+		file_server
+	}
+
+	# The React app. Unknown paths load index.html so links like /ads/... work.
+	handle {
+		root * /srv/site
+		@immutable path /assets/* /icons/*
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+		@mutable not path /assets/* /icons/*
+		# Phones must re-check these so they pick up new releases.
+		header @mutable Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

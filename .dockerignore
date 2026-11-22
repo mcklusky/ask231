@@ -1,0 +1,12 @@
+# Used when building the website image (context = repository root).
+.git
+**/node_modules
+**/dist
+**/*.log
+**/*.tsbuildinfo
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+backend
+deploy/lightsail/.env
+deploy/lightsail/backups
