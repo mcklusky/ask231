@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Eye, Store, Truck } from '../lib/site-icons'
+import { ArrowLeft, ChevronRight, Eye, Store, Truck } from '../lib/site-icons'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -9,6 +9,7 @@ import { formatCurrencyAmount, formatLocation, isJobsCategory, jobTypeLabels, ma
 import { messageFromError } from '../utils/errors'
 import { ListingCard, formatPrice } from './Home'
 import ContactPanel from '@/components/listing/ContactPanel'
+import PhotoGallery from '@/components/listing/PhotoGallery'
 import ReportDialog from '@/components/listing/ReportDialog'
 import SellerCard from '@/components/listing/SellerCard'
 import { SellerReviews } from '@/components/listing/Reviews'
@@ -37,7 +38,6 @@ export default function AdvertisementDetail() {
   const location = useLocation()
   const [ad, setAd] = useState<Advertisement | null>(null)
   const [similar, setSimilar] = useState<Advertisement[]>([])
-  const [imageIndex, setImageIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [chatError, setChatError] = useState('')
@@ -46,7 +46,7 @@ export default function AdvertisementDetail() {
 
   useEffect(() => {
     let alive = true
-    setLoading(true); setError(''); setImageIndex(0)
+    setLoading(true); setError('')
     marketplaceApi.advertisement(slug).then(async ({ data }) => {
       if (!alive) return
       setAd(data); setLoading(false)
@@ -102,12 +102,11 @@ export default function AdvertisementDetail() {
   if (loading) return <div className="public-market"><div className="detail-loading"><div/><span>Loading listing…</span></div></div>
   if (error || !ad) return <div className="public-market"><div className="detail-error"><Link to="/listings"><ArrowLeft size={15}/> Back to listings</Link><div><Store size={28}/><h1>This listing isn't available</h1><p>{error || 'It may have been removed or is no longer active.'}</p><Link className="market-hero-primary" to="/listings">Explore other listings</Link></div></div></div>
 
-  const image = ad.images[imageIndex]?.image_url
   const phone = ad.phone_number.replace(/[\s()-]/g, '')
   const whatsapp = (ad.whatsapp_number || ad.phone_number).replace(/\D/g, '')
   return <div className="public-market"><PublicHeader />
     <main className="detail-main"><div className="browse-crumb"><Link to="/"><ArrowLeft size={14}/> Home</Link><span>/</span><Link to="/listings">Listings</Link><span>/</span><Link to={`/category/${ad.category.slug}`}>{ad.category.name}</Link></div>
-      <div className="detail-layout"><section className="detail-primary"><div className="detail-gallery"><div className="detail-main-image">{image ? <img src={image} alt={ad.images[imageIndex]?.alt_text || ad.title}/> : <div className="listing-placeholder large"><Store size={58}/></div>}{ad.images.length > 1 && <><button aria-label="Previous image" onClick={() => setImageIndex(i => (i - 1 + ad.images.length) % ad.images.length)}><ChevronLeft size={20}/></button><button aria-label="Next image" onClick={() => setImageIndex(i => (i + 1) % ad.images.length)}><ChevronRight size={20}/></button><span>{imageIndex + 1} / {ad.images.length}</span></>}</div>{ad.images.length > 1 && <div className="detail-thumbnails">{ad.images.map((item, index) => <button key={item.id} className={index === imageIndex ? 'selected' : ''} onClick={() => setImageIndex(index)}><img src={item.thumbnail_url || item.image_url} loading="lazy" decoding="async" alt={item.alt_text || `${ad.title} ${index + 1}`}/></button>)}</div>}</div>
+      <div className="detail-layout"><section className="detail-primary"><PhotoGallery key={ad.slug} images={ad.images} title={ad.title} />
         <div className="detail-description"><div className="detail-section-heading"><h2>Description</h2><span><Eye size={14}/> {ad.views_count.toLocaleString()} views</span></div><p>{ad.description}</p>{isJobsCategory(ad.category) && ad.how_to_apply && <div className="mt-4 rounded-lg border border-primary/20 bg-secondary/60 p-3"><b className="text-sm">How to apply</b><p className="mt-1 text-sm">{ad.how_to_apply}</p></div>}{ad.ships_from_abroad && <ShipsFromAbroad ad={ad} />}<div className="detail-facts">{isJobsCategory(ad.category) ? <><div><small>Job type</small><b>{ad.job_type ? jobTypeLabels[ad.job_type] : 'Not stated'}</b></div><div><small>Pay</small><b>{formatPrice(ad)} {ad.pay_period ? payPeriodLabels[ad.pay_period] : ''}</b></div></> : <div><small>Condition</small><b>{ad.condition === 'new' ? 'New' : 'Used'}</b></div>}<div><small>Category</small><b>{ad.category.name} · {ad.subcategory.name}</b></div><div><small>Location</small><b>{formatLocation(ad)}</b></div>{ad.landmark && <div><small>Landmark</small><b>{ad.landmark} <a className="ml-1 whitespace-nowrap text-sm font-semibold text-primary underline underline-offset-2 dark:text-brand-primary" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([ad.landmark, ad.town?.name, ad.county?.name, ad.country].filter(Boolean).join(', '))}`} target="_blank" rel="noopener noreferrer">Open in Maps</a></b></div>}<div><small>Posted</small><b>{new Date(ad.created_at).toLocaleDateString('en-LR', { day: 'numeric', month: 'short', year: 'numeric' })}</b></div></div></div>
       </section>
         <aside className="detail-sidebar space-y-3 max-[767px]:mb-3">

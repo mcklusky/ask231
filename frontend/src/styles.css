@@ -644,8 +644,6 @@ select option[value=""]{color:var(--muted)}
   --ui-brand-accent:22 68% 46%;--ui-brand-accent-hover:22 68% 40%;
 }
 
-/* Ad photo fills its whole box (edges may be trimmed to fit) */
-.detail-main-image>img{object-fit:cover;object-position:center}
 
 /* Phones: a 16px base so text is readable and every rem-sized control (buttons, inputs) gets a thumb-sized
    44px+ tap area. Desktop keeps the compact 14px base set on :root above. */
@@ -661,3 +659,8 @@ select option[value=""]{color:var(--muted)}
   .detail-main-image>button{width:44px;height:44px;top:calc(50% - 22px)}
   .home-location-row select,.browse-location-row select{min-height:44px}
 }
+
+/* Ad photos (components/listing/PhotoGallery.tsx): the box takes the first photo's own shape (--photo-ratio,
+   kept between 4:5 and 16:9) so photos show whole instead of being cropped; never taller than most of the screen. */
+.detail-main-image.photo-fit{width:100%;height:auto!important;aspect-ratio:var(--photo-ratio,1)!important;max-height:min(75svh,560px)}
+.detail-main-image.photo-fit>span.photo-fit-hint{right:auto;left:12px;display:inline-flex;align-items:center;gap:5px;pointer-events:none}
