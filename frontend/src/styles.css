@@ -660,7 +660,10 @@ select option[value=""]{color:var(--muted)}
   .home-location-row select,.browse-location-row select{min-height:44px}
 }
 
-/* Ad photos (components/listing/PhotoGallery.tsx): the box takes the first photo's own shape (--photo-ratio,
-   kept between 4:5 and 16:9) so photos show whole instead of being cropped; never taller than most of the screen. */
-.detail-main-image.photo-fit{width:100%;height:auto!important;aspect-ratio:var(--photo-ratio,1)!important;max-height:min(75svh,560px)}
+/* Ad photos (components/listing/PhotoGallery.tsx): the box is sized to the photo on show (inline width/height set
+   by the component; --photo-ratio is the shape used before it measures), so there is no empty space around it. */
+.detail-main-image.photo-fit{width:100%;max-width:100%;height:auto;aspect-ratio:var(--photo-ratio,1);max-height:min(75svh,560px);margin-inline:auto;transition:height .25s ease}
+@media(prefers-reduced-motion:reduce){.detail-main-image.photo-fit{transition:none}}
 .detail-main-image.photo-fit>span.photo-fit-hint{right:auto;left:12px;display:inline-flex;align-items:center;gap:5px;pointer-events:none}
+/* Wider screens centre the photo, so centre its thumbnails under it too ("safe" keeps a long row scrollable from the start). */
+@media(min-width:768px){.detail-main-image.photo-fit+.detail-thumbnails{justify-content:safe center}}
