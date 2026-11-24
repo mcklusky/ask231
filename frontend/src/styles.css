@@ -660,10 +660,21 @@ select option[value=""]{color:var(--muted)}
   .home-location-row select,.browse-location-row select{min-height:44px}
 }
 
-/* Ad photos (components/listing/PhotoGallery.tsx): the box is sized to the photo on show (inline width/height set
-   by the component; --photo-ratio is the shape used before it measures), so there is no empty space around it. */
-.detail-main-image.photo-fit{width:100%;max-width:100%;height:auto;aspect-ratio:var(--photo-ratio,1);max-height:min(75svh,560px);margin-inline:auto;transition:height .25s ease}
-@media(prefers-reduced-motion:reduce){.detail-main-image.photo-fit{transition:none}}
-.detail-main-image.photo-fit>span.photo-fit-hint{right:auto;left:12px;display:inline-flex;align-items:center;gap:5px;pointer-events:none}
-/* Wider screens centre the photo, so centre its thumbnails under it too ("safe" keeps a long row scrollable from the start). */
-@media(min-width:768px){.detail-main-image.photo-fit+.detail-thumbnails{justify-content:safe center}}
+/* Ad photos, shop style (components/listing/PhotoGallery.tsx): every photo in the same square white box,
+   shown whole. Phones: edge to edge, swipe only, small counter pill. Computers: centred square up to 560px. */
+.detail-main-image.photo-square{width:min(100%,560px);height:auto;aspect-ratio:1/1;margin-inline:auto;background:#fff;border-radius:0}
+[data-theme="dark"] .detail-main-image.photo-square{background:#1a2727}
+.detail-gallery.photo-gallery{background:#fff}
+[data-theme="dark"] .detail-gallery.photo-gallery{background:transparent}
+.photo-square>span.photo-count{right:10px;bottom:10px;padding:3px 10px;border-radius:999px;background:rgba(0,0,0,.45);font-size:12px;font-weight:600;letter-spacing:.3px}
+.photo-square>span.photo-expand{right:auto;left:10px;bottom:10px;display:grid;place-items:center;width:30px;height:30px;padding:0;border-radius:999px;background:rgba(0,0,0,.45);pointer-events:none}
+.photo-square>button{box-shadow:0 1px 6px rgba(0,0,0,.2)}
+.photo-thumbs button{width:56px;height:56px;border-radius:6px}
+.photo-thumbs button:not(.selected){opacity:.75}
+@media(min-width:768px){.photo-thumbs{justify-content:safe center}}
+@media(max-width:767px){
+  /* Pull the photo out to the screen edges: 15px page gutter + 1px card border on each side. */
+  .detail-layout .detail-gallery.photo-gallery{width:calc(100% + 32px)!important;max-width:none;margin:0 -16px;border:0;border-radius:0}
+  .detail-layout:has(.photo-square){border-top:0;border-top-left-radius:0;border-top-right-radius:0;overflow:visible}
+  .photo-square>button{display:none}
+}

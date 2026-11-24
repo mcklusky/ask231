@@ -1,23 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { ChevronLeft, ChevronRight, Expand, Store, X } from 'lucide-react'
 import type { AdImage } from '@/lib/marketplace'
 import { cn } from '@/lib/utils'
-
-// The photo box is exactly the size the photo on show appears at, so there is no empty space around it:
-// as wide as the page allows, but never taller than MAX_HEIGHT (or 75% of the screen) nor shorter than MIN_HEIGHT.
-const MAX_HEIGHT = 560
-const MIN_HEIGHT = 160
-// Phones keep the box full width and only change its height, so swiping never fights a changing width.
-const HUG_WIDTH_FROM = 600
-const ratioOf = (image?: AdImage) => (image?.width && image?.height ? image.width / image.height : null)
-
-/** Box size for a photo of this shape in a gallery this wide. */
-function fitBox(galleryWidth: number, screenHeight: number, ratio: number) {
-  const height = Math.max(MIN_HEIGHT, Math.min(galleryWidth / ratio, MAX_HEIGHT, screenHeight * 0.75))
-  const width = galleryWidth >= HUG_WIDTH_FROM ? Math.min(galleryWidth, height * ratio) : galleryWidth
-  return { width: Math.round(width), height: Math.round(height) }
-}
 
 /** Swipeable strip of photos; reports which one is in view. Used on the ad page and in the full-screen viewer. */
 function useStrip(count: number, onIndex: (index: number) => void) {
@@ -38,55 +23,25 @@ function useStrip(count: number, onIndex: (index: number) => void) {
 const stripClass = 'flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
 
 /**
- * Ad page photos: every photo shown whole (never cropped), swipe or arrows to move between them,
- * tap to open full screen where people can pinch to zoom.
+ * Ad page photos, shop style: every photo in the same square white box (shown whole, never cropped), edge to
+ * edge on phones. Swipe (or arrows on computers) to move between them; tap to open full screen and pinch to zoom.
  */
 export default function PhotoGallery({ images, title }: { images: AdImage[]; title: string }) {
   const [index, setIndex] = useState(0)
   const [viewerOpen, setViewerOpen] = useState(false)
-  // Shapes of photos saved before sizes were stored, measured once they load.
-  const [loadedRatios, setLoadedRatios] = useState<Record<number, number>>({})
-  const [space, setSpace] = useState({ width: 0, screenHeight: 0 })
-  const gallery = useRef<HTMLDivElement>(null)
   const { strip, goTo, onScroll } = useStrip(images.length, setIndex)
   const many = images.length > 1
-  const ratio = ratioOf(images[index]) ?? loadedRatios[images[index]?.id] ?? ratioOf(images[0]) ?? 1
-  const box = space.width ? fitBox(space.width, space.screenHeight, ratio) : null
-
-  // Measure the space the gallery has; the screen height is read alongside it, so the phone's address bar
-  // sliding in and out while scrolling does not make the photo jump.
-  useLayoutEffect(() => {
-    const el = gallery.current
-    if (!el) return
-    const observer = new ResizeObserver(([entry]) => setSpace({ width: entry.contentRect.width, screenHeight: window.innerHeight }))
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-  // Wider screens resize the box per photo: keep the photo on show lined up with the new width.
-  const boxWidth = box?.width
-  useLayoutEffect(() => { if (boxWidth) goTo(index, false) }, [boxWidth]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!images.length) return <div className="detail-gallery"><div className="detail-main-image"><div className="listing-placeholder large"><Store size={58} /></div></div></div>
 
-  // Arrows and thumbnails: on phones the strip slides; on wider screens the box reshapes, so jump straight there.
-  function show(target: number) {
-    const next = (target + images.length) % images.length
-    const reshapes = space.width >= HUG_WIDTH_FROM
-    if (reshapes) setIndex(next)
-    goTo(next, !reshapes)
-  }
   function closeViewer(open: boolean, at: number) {
     setViewerOpen(open)
     if (!open) { setIndex(at); goTo(at, false) }
   }
-  const remember = (image: AdImage) => (event: React.SyntheticEvent<HTMLImageElement>) => {
-    const { naturalWidth, naturalHeight } = event.currentTarget
-    if (!ratioOf(image) && naturalWidth && naturalHeight) setLoadedRatios(known => ({ ...known, [image.id]: naturalWidth / naturalHeight }))
-  }
 
   return (
-    <div className="detail-gallery" ref={gallery}>
-      <div className="detail-main-image photo-fit" style={{ '--photo-ratio': ratio, ...(box && { width: box.width, height: box.height }) } as CSSProperties} aria-roledescription="carousel" aria-label={`Photos of ${title}`}>
+    <div className="detail-gallery photo-gallery">
+      <div className="detail-main-image photo-square" aria-roledescription="carousel" aria-label={`Photos of ${title}`}>
         <div ref={strip} onScroll={onScroll} className={stripClass}>
           {images.map((image, i) => (
             <button key={image.id} type="button" onClick={() => { setIndex(i); setViewerOpen(true) }} className="relative h-full w-full shrink-0 snap-center cursor-zoom-in" aria-label={`Open photo ${i + 1} of ${images.length} full screen`}>
@@ -97,23 +52,22 @@ export default function PhotoGallery({ images, title }: { images: AdImage[]; tit
                 height={image.height ?? undefined}
                 loading={i === 0 ? 'eager' : 'lazy'}
                 decoding="async"
-                onLoad={ratioOf(image) ? undefined : remember(image)}
                 className="h-full w-full object-contain"
               />
             </button>
           ))}
         </div>
         {many && <>
-          <button type="button" aria-label="Previous photo" onClick={() => show(index - 1)}><ChevronLeft size={20} /></button>
-          <button type="button" aria-label="Next photo" onClick={() => show(index + 1)}><ChevronRight size={20} /></button>
-          <span aria-live="polite">{index + 1} / {images.length}</span>
+          <button type="button" aria-label="Previous photo" onClick={() => goTo(index - 1)}><ChevronLeft size={20} /></button>
+          <button type="button" aria-label="Next photo" onClick={() => goTo(index + 1)}><ChevronRight size={20} /></button>
+          <span className="photo-count" aria-live="polite">{index + 1}/{images.length}</span>
         </>}
-        <span className="photo-fit-hint" aria-hidden="true"><Expand size={14} /> Enlarge</span>
+        <span className="photo-expand" aria-hidden="true"><Expand size={15} /></span>
       </div>
       {many && (
-        <div className="detail-thumbnails">
+        <div className="detail-thumbnails photo-thumbs">
           {images.map((image, i) => (
-            <button key={image.id} type="button" className={i === index ? 'selected' : ''} aria-label={`Show photo ${i + 1}`} aria-current={i === index ? 'true' : undefined} onClick={() => show(i)}>
+            <button key={image.id} type="button" className={i === index ? 'selected' : ''} aria-label={`Show photo ${i + 1}`} aria-current={i === index ? 'true' : undefined} onClick={() => goTo(i)}>
               <img src={image.thumbnail_url || image.image_url} loading="lazy" decoding="async" alt="" />
             </button>
           ))}
