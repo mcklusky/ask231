@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { Download, Heart, Search, LayoutDashboard, List, LogOut, MessageCircle, Moon, Plus, Smartphone, Sun, UserRound } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { accountLabel } from '@/lib/api'
-import { chatApi } from '@/lib/chat'
+import { useUnreadMessages } from '@/lib/unread'
 import { useInstallAction } from '@/components/InstallApp'
 import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
@@ -18,24 +17,7 @@ function initials(first: string, last: string, email: string) {
   return (fromName || email[0] || '?').toUpperCase()
 }
 
-/** Unread messages for the signed-in member. Refreshes on navigation, when the tab regains focus, and every minute. */
-function useUnreadMessages(signedIn: boolean) {
-  const [count, setCount] = useState(0)
-  const { pathname } = useLocation()
-  useEffect(() => {
-    if (!signedIn) { setCount(0); return }
-    let alive = true
-    const load = () => { if (document.visibilityState === 'visible') chatApi.unreadCount().then(({ data }) => { if (alive) setCount(data.count) }).catch(() => undefined) }
-    load()
-    // The inbox polls on its own, so the header only polls elsewhere.
-    const timer = pathname.startsWith('/messages') ? undefined : window.setInterval(load, 60000)
-    document.addEventListener('visibilitychange', load)
-    return () => { alive = false; window.clearInterval(timer); document.removeEventListener('visibilitychange', load) }
-  }, [signedIn, pathname])
-  return count
-}
-
-function UnreadBadge({ count, className }: { count: number; className?: string }) {
+export function UnreadBadge({ count, className }: { count: number; className?: string }) {
   if (!count) return null
   return <span aria-hidden="true" className={cn('grid h-5 min-w-5 place-items-center rounded-full bg-brand-accent px-1 text-[11px] font-bold leading-none text-white ring-2 ring-primary dark:ring-card', className)}>{count > 99 ? '99+' : count}</span>
 }
@@ -50,7 +32,7 @@ export default function PublicHeader() {
   const navigate = useNavigate()
   const sellTo = profile ? '/ads/new' : '/register'
   const ThemeIcon = theme === 'dark' ? Sun : Moon
-  const unread = useUnreadMessages(Boolean(profile))
+  const unread = useUnreadMessages()
   const installApp = useInstallAction()
   const messagesLabel = unread ? `Messages, ${unread} unread` : 'Messages'
 
@@ -75,7 +57,7 @@ export default function PublicHeader() {
 
           {profile ? (
             <>
-              <Button asChild variant="on-brand" size="icon" className="relative hidden sm:inline-flex" aria-label={messagesLabel} title={messagesLabel}>
+              <Button asChild variant="on-brand" size="icon" className="relative hidden md:inline-flex" aria-label={messagesLabel} title={messagesLabel}>
                 <Link to="/messages"><MessageCircle /><UnreadBadge count={unread} className="absolute -right-1 -top-1" /></Link>
               </Button>
               <DropdownMenu>
@@ -84,7 +66,7 @@ export default function PublicHeader() {
                     <Avatar className="size-10 ring-2 ring-white/70">
                       <AvatarFallback className="bg-white text-primary">{initials(profile.first_name, profile.last_name, accountLabel(profile))}</AvatarFallback>
                     </Avatar>
-                    <UnreadBadge count={unread} className="absolute -right-1 -top-1 sm:hidden" />
+                    <UnreadBadge count={unread} className="absolute -right-1 -top-1 md:hidden" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64">
@@ -113,8 +95,9 @@ export default function PublicHeader() {
             </Button>
           )}
 
-          <Button asChild variant="cta" className="ml-1 px-3 ring-1 ring-white/30 sm:px-4">
-            <Link to={sellTo}><Plus /><span className="hidden sm:inline">Post an ad</span><span className="sm:hidden">Sell</span></Link>
+          {/* Phones post from the tab bar at the bottom of the screen instead. */}
+          <Button asChild variant="cta" className="ml-1 hidden px-4 ring-1 ring-white/30 md:inline-flex">
+            <Link to={sellTo}><Plus />Post an ad</Link>
           </Button>
         </div>
       </div>

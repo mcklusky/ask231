@@ -84,14 +84,15 @@ export default function MyAds() {
                         {ad.status === 'rejected' && ad.rejection_reason && <p className="mt-2 rounded-md bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">Review note: {ad.rejection_reason}</p>}
                       </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    {/* Phones: an even two-column grid of labelled buttons; wider screens: one compact row. */}
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
                       {ad.status === 'active' && <Button asChild variant="ghost" size="sm"><Link to={`/ads/${ad.slug}`}><ExternalLink />View</Link></Button>}
                       <Button asChild variant="outline" size="sm"><Link to={`/ads/${ad.slug}/edit`}><Pencil />Edit</Link></Button>
                       {['pending', 'active'].includes(ad.status) && (
                         <Button variant="secondary" size="sm" onClick={() => void markSold(ad)} disabled={busy === ad.slug}>{busy === ad.slug ? <Loader2 className="animate-spin" /> : <Check />}Mark sold</Button>
                       )}
                       <ConfirmDialog
-                        trigger={<Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Delete ${ad.title}`}><Trash2 /></Button>}
+                        trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:w-9 sm:px-0" aria-label={`Delete ${ad.title}`}><Trash2 /><span className="sm:sr-only">Delete</span></Button>}
                         title="Delete this advertisement?" description={<>“{ad.title}” will be removed permanently. This can’t be undone.</>}
                         confirmLabel="Delete" destructive onConfirm={() => remove(ad)}
                       />

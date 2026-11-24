@@ -88,7 +88,7 @@ export default function Account() {
 
   return (
     <AuthLayout title="Your account" subtitle="Manage your details, ads and messages." wide>
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <Card className="flex items-center gap-4 p-4">
           <Avatar className="size-14"><AvatarFallback className="bg-primary text-lg text-primary-foreground">{initials}</AvatarFallback></Avatar>
           <div className="min-w-0 flex-1">

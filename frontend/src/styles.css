@@ -255,7 +255,7 @@ body{color:var(--text);background:#fff}
 
 
 .marketplace-home-layout{grid-template-columns:250px minmax(0,1fr)}.category-browser{width:250px;margin:0;position:relative;z-index:8}.category-browser-columns{display:block}.category-browser-subcategories{position:absolute;top:36px;left:calc(100% + 8px);width:300px;z-index:9;box-shadow:0 8px 28px rgba(26,46,60,.14)}
-@media(max-width:700px){.marketplace-home-layout{grid-template-columns:1fr}.category-browser{width:100%;margin:0}.category-browser-subcategories{position:static;width:auto;max-height:340px;margin-top:8px;box-shadow:none}.category-browser-list{max-height:280px}}
+@media(max-width:767px){.marketplace-home-layout{grid-template-columns:1fr}.category-browser{width:100%;margin:0}.category-browser-subcategories{position:static;width:auto;max-height:340px;margin-top:8px;box-shadow:none}.category-browser-list{max-height:280px}}
 
 
 .category-browser-subcategories{visibility:hidden;opacity:0;pointer-events:none;transition:opacity .12s ease,visibility .12s ease}.category-browser.has-active-category .category-browser-subcategories{visibility:visible;opacity:1;pointer-events:auto}
@@ -646,3 +646,18 @@ select option[value=""]{color:var(--muted)}
 
 /* Ad photo fills its whole box (edges may be trimmed to fit) */
 .detail-main-image>img{object-fit:cover;object-position:center}
+
+/* Phones: a 16px base so text is readable and every rem-sized control (buttons, inputs) gets a thumb-sized
+   44px+ tap area. Desktop keeps the compact 14px base set on :root above. */
+@media(max-width:767px){:root{font-size:16px}}
+
+/* Phone tab bar (components/MobileTabBar.tsx): --tabbar-h is its height, 0 when it is not on screen,
+   so full-height layouts and bottom bars can leave room for it. */
+:root{--tabbar-h:0px}
+@media(max-width:767px){html.has-tabbar{--tabbar-h:calc(60px + env(safe-area-inset-bottom, 0px))}html.has-tabbar body{padding-bottom:var(--tabbar-h)}}
+
+/* Phones: thumb-sized gallery arrows and location pickers (the whole pill opens the county list). */
+@media(max-width:767px){
+  .detail-main-image>button{width:44px;height:44px;top:calc(50% - 22px)}
+  .home-location-row select,.browse-location-row select{min-height:44px}
+}

@@ -64,7 +64,7 @@ export default function AuthLayout({ children, title, subtitle, wide = false }: 
           </div>
         </header>
         <main className="flex flex-1 items-start justify-center px-4 py-8 sm:items-center sm:px-8 sm:py-12">
-          <div className={cn('w-full', wide ? 'max-w-xl' : 'max-w-md')}>
+          <div className={cn('w-full min-w-0', wide ? 'max-w-xl' : 'max-w-md')}>
             <div className="mb-6">
               <h1 className="font-display text-3xl font-extrabold tracking-tight">{title}</h1>
               <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>

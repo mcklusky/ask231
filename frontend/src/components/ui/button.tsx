@@ -24,10 +24,11 @@ const buttonVariants = cva(
       },
       size: {
         default: 'h-11 px-4',
-        sm: 'h-9 rounded-md px-3 text-[13px]',
+        // Small buttons stay thumb-sized (40px) on phones and go compact from tablet width up.
+        sm: 'h-10 rounded-md px-3 text-sm md:h-9 md:text-[13px]',
         lg: 'h-12 rounded-lg px-6 text-base',
         icon: 'h-11 w-11',
-        'icon-sm': 'h-9 w-9',
+        'icon-sm': 'h-10 w-10 md:h-9 md:w-9',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },

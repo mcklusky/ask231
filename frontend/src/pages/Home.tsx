@@ -9,6 +9,7 @@ import PublicHeader from '../components/PublicHeader'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { InstallAppCard } from '@/components/InstallApp'
 import HomeRequests from '@/components/HomeRequests'
 import { SocialLinks, WhatsAppChannelCard } from '@/components/SocialLinks'
@@ -94,6 +95,21 @@ function CategoryBrowser({ categories, loading }: { categories: Category[]; load
   </section>
 }
 
+/** Phones: categories as a grid of big icon tiles (the hover menu above is for computers). */
+function PhoneCategoryGrid({ categories }: { categories: Category[] }) {
+  const [showAll, setShowAll] = useState(false)
+  const shown = showAll ? categories : categories.slice(0, 7)
+  const tile = 'flex min-h-[88px] flex-col items-center justify-start gap-1.5 rounded-xl px-1 pt-2.5 pb-2 text-center active:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+  const icon = 'grid size-12 place-items-center rounded-2xl bg-secondary text-primary dark:text-brand-primary'
+  return <section className="px-3 pt-4 md:hidden" aria-labelledby="phone-categories-heading">
+    <div className="mb-1 flex items-baseline justify-between px-1"><h2 id="phone-categories-heading" className="font-display text-lg font-extrabold">Categories</h2><Link to="/listings" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary dark:text-brand-primary">All listings <ArrowRight className="size-4" aria-hidden="true" /></Link></div>
+    <ul className="grid grid-cols-4 gap-1">
+      {shown.map(category => { const Icon = categoryIllustrations[category.slug] || Package; return <li key={category.slug}><Link to={`/category/${category.slug}`} className={tile}><span className={icon} aria-hidden="true"><Icon className="size-6" strokeWidth={1.75} /></span><span className="line-clamp-2 text-xs font-medium leading-tight text-foreground">{category.name}</span></Link></li> })}
+      {categories.length > 7 && <li><button type="button" onClick={() => setShowAll(value => !value)} aria-expanded={showAll} className={cn(tile, 'w-full')}><span className={icon} aria-hidden="true"><ChevronRight className={cn('size-6 transition-transform', showAll ? '-rotate-90' : 'rotate-90')} /></span><span className="text-xs font-semibold leading-tight text-primary dark:text-brand-primary">{showAll ? 'Show less' : `${categories.length - 7} more`}</span></button></li>}
+    </ul>
+  </section>
+}
+
 export default function Home() {
   const { profile } = useAuth()
   const navigate = useNavigate()
@@ -124,7 +140,7 @@ export default function Home() {
     <main>
       <section className="market-search-band"><div className="market-search-inner"><span className="market-kicker"><span /> {COUNTRY_NAME.toUpperCase()}'S BUY &amp; SELL MARKETPLACE</span><h1>What are you looking for?</h1><p>Buy and sell with people in your community.</p><form className="marketplace-search home-search-bar" onSubmit={searchListings} onFocusCapture={event => { if ((event.target as HTMLElement).closest('.home-search-row')) setBusinessMenuOpen(true) }} onKeyDownCapture={event => { if (event.key === 'Escape') setBusinessMenuOpen(false) }} onClickCapture={event => { if ((event.target as HTMLElement).closest('.home-search-row')) setBusinessMenuOpen(true); else if ((event.target as HTMLElement).closest('.home-location-row')) setBusinessMenuOpen(false) }}><div className="home-search-anchor"><div className="home-search-row"><label className="market-search-input"><input aria-label="Search products and services" aria-expanded={businessMenuOpen} aria-controls="home-business-menu" placeholder="I am looking for..." value={query} onChange={event => setQuery(event.target.value)} /></label><button type="submit" aria-label="Search"><SearchGlyph size={19} aria-hidden="true"/></button></div><BusinessDirectory open={businessMenuOpen} /></div><label className="home-location-row"><MapPin size={16} aria-hidden="true"/><span>Location</span><select aria-label="Choose a county" value={county} onChange={event => setCounty(event.target.value)}><option value="">Any location</option>{counties.map(place => <option value={place.slug} key={place.id}>{place.name}</option>)}</select></label></form></div></section>
       <section className="market-feature-banner"><div className="market-feature-copy"><span>LOCAL FINDS · BIG POSSIBILITIES</span><h2>Good finds are closer <br/>than you think.</h2><p>Shop directly from people and businesses across {COUNTRY_NAME}.</p><div className="mt-5"><Button asChild variant="cta" size="lg"><Link to="/listings">Explore the marketplace <ArrowRight /></Link></Button></div></div><div className="market-feature-art" aria-hidden="true"><div className="feature-orbit"/><span className="feature-product feature-product-phone"><Smartphone size={36}/></span><span className="feature-product feature-product-home"><Sofa size={34}/></span><span className="feature-product feature-product-laptop"><Laptop size={35}/></span><span className="feature-product feature-product-fashion"><Shirt size={31}/></span><div className="feature-note"><MapPin size={15}/><span><b>Right here at home</b><small>Across all 15 counties</small></span></div></div></section>
-      <div className="marketplace-home-layout"><CategoryBrowser categories={categoryItems} loading={categoriesLoading}/><div className="marketplace-home-content"><section className="market-welcome-strip"><div><BadgeCheck size={18}/><span><b>Buy smarter.</b> Shop local finds from across {COUNTRY_NAME}.</span></div><span className="market-welcome-location"><MapPin size={14}/> +231 · 15 counties</span></section><InstallAppCard/>
+      <PhoneCategoryGrid categories={categoryItems}/><div className="marketplace-home-layout"><div className="hidden md:block"><CategoryBrowser categories={categoryItems} loading={categoriesLoading}/></div><div className="marketplace-home-content"><section className="market-welcome-strip"><div><BadgeCheck size={18}/><span><b>Buy smarter.</b> Shop local finds from across {COUNTRY_NAME}.</span></div><span className="market-welcome-location"><MapPin size={14}/> +231 · 15 counties</span></section><InstallAppCard/>
           <section className="market-home-section"><div className="market-home-section-heading"><div><span className="public-eyebrow">POPULAR AROUND {COUNTRY_NAME.toUpperCase()}</span><h2>Trending ads</h2></div><Link to="/listings">View all <ArrowRight size={15}/></Link></div>{loading ? <div className="listing-grid">{[1,2,3,4,5,6,7,8].map(n => <div className="listing-skeleton" key={n}><div/><span/><i/></div>)}</div> : shownAds.length ? <div className="listing-grid">{shownAds.slice(0,12).map(ad => <ListingCard key={ad.id} ad={ad}/>)}</div> : <>{adsError ? <div className="home-empty" role="alert"><span className="home-empty-icon"><RefreshCw size={22} aria-hidden="true"/></span><h3>We couldn't load listings</h3><p>{adsError}</p><Button type="button" variant="default" onClick={() => window.location.reload()}><RefreshCw /> Try again</Button></div> : <div className="home-empty"><span className="home-empty-icon"><Store size={22} aria-hidden="true"/></span><h3>{SITE_NAME} is just getting started</h3><p>No ads have been posted yet. Be the first to sell to buyers across {COUNTRY_NAME}.</p><Button asChild variant="cta"><Link to={profile ? '/ads/new' : '/register'}>{profile ? 'Post the first ad' : 'Sign up to sell'} <ArrowRight /></Link></Button></div>}{showDemoListings && <DemoProductGrid/>}</>}</section>
           <HomeRequests/>
           <WhatsAppChannelCard/>

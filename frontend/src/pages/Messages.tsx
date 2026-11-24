@@ -142,10 +142,10 @@ export default function Messages() {
   if (!profile) return <Navigate to="/login?next=/messages" replace />
 
   return (
-    <div className="flex min-h-dvh flex-col bg-muted/40 text-foreground">
+    <div className="flex min-h-[calc(100dvh-var(--tabbar-h))] flex-col bg-muted/40 text-foreground">
       <PublicHeader />
       <main className="mx-auto flex w-full max-w-[1160px] flex-1 sm:px-4 sm:py-5">
-        <Card className="flex h-[calc(100dvh-67px)] w-full overflow-hidden rounded-none border-x-0 sm:h-[calc(100dvh-67px-2.5rem)] sm:rounded-xl sm:border-x">
+        <Card className="flex h-[calc(100dvh-67px-var(--tabbar-h))] w-full overflow-hidden rounded-none border-x-0 sm:h-[calc(100dvh-67px-2.5rem-var(--tabbar-h))] sm:rounded-xl sm:border-x">
           {/* Inbox */}
           <aside className={cn('w-full shrink-0 flex-col border-r md:flex md:w-80 lg:w-96', id ? 'hidden' : 'flex')} aria-label="Conversations">
             <div className="flex items-center justify-between gap-2 border-b px-4 py-4">
