@@ -40,7 +40,7 @@ export default function PhotoGallery({ images, title }: { images: AdImage[]; tit
   }
 
   return (
-    <div className={cn('detail-gallery photo-gallery', many && 'has-thumbs')}>
+    <div className="detail-gallery photo-gallery">
       <div className="detail-main-image photo-square" aria-roledescription="carousel" aria-label={`Photos of ${title}`}>
         <div ref={strip} onScroll={onScroll} className={stripClass}>
           {images.map((image, i) => (

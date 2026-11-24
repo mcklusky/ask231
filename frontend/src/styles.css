@@ -661,34 +661,25 @@ select option[value=""]{color:var(--muted)}
 }
 
 /* Ad photos, shop style (components/listing/PhotoGallery.tsx): every photo in the same square white box,
-   shown whole. Phones: edge to edge, swipe only, small counter pill. Computers: centred square up to 560px. */
-.detail-main-image.photo-square{width:min(100%,560px);height:auto;aspect-ratio:1/1;margin-inline:auto;background:#fff;border-radius:0}
+   shown whole, exactly as wide as the details below it so both share the same left and right edges.
+   Thumbnails sit in a row underneath, starting at that same left edge. */
+.detail-main-image.photo-square{width:100%;height:auto;aspect-ratio:1/1;margin:0;background:#fff;border-radius:0}
 [data-theme="dark"] .detail-main-image.photo-square{background:#1a2727}
 .detail-gallery.photo-gallery{background:#fff}
 [data-theme="dark"] .detail-gallery.photo-gallery{background:transparent}
 .photo-square>span.photo-count{right:10px;bottom:10px;padding:3px 10px;border-radius:999px;background:rgba(0,0,0,.45);font-size:12px;font-weight:600;letter-spacing:.3px}
 .photo-square>span.photo-expand{right:auto;left:10px;bottom:10px;display:grid;place-items:center;width:30px;height:30px;padding:0;border-radius:999px;background:rgba(0,0,0,.45);pointer-events:none}
 .photo-square>button{box-shadow:0 1px 6px rgba(0,0,0,.2)}
+.photo-gallery .photo-thumbs{padding:10px 0 0;gap:8px}
 .photo-thumbs button{width:56px;height:56px;border-radius:6px}
 .photo-thumbs button:not(.selected){opacity:.75}
-@media(max-width:767px){
-  /* Pull the photo out to the screen edges: 15px page gutter + 1px card border on each side. */
-  .detail-layout .detail-gallery.photo-gallery{width:calc(100% + 32px)!important;max-width:none;margin:0 -16px;border:0;border-radius:0}
-  .detail-layout:has(.photo-square){border-top:0;border-top-left-radius:0;border-top-right-radius:0;overflow:visible}
-  .photo-square>button{display:none}
-}
-/* Computers: line the photos up with the description below. The gallery gets the same 19px inset as the
-   description text; thumbnails run down the left, and the square photo fills the rest of the width
-   (up to 80% of the screen height), so photo and text share both edges. */
+/* Phones: swipe only. The photo fills the card width, the same width as the price card and description. */
+@media(max-width:767px){.photo-square>button{display:none}.photo-gallery .photo-thumbs{padding:10px 0}}
+/* Computers: the gallery gets the same 19px inset as the description text, so the photo spans exactly the text width. */
 @media(min-width:768px){
-  .detail-gallery.photo-gallery{padding:19px}
-  .detail-gallery.photo-gallery.has-thumbs{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;align-items:start}
-  .photo-gallery .photo-square{grid-column:2;grid-row:1;width:min(100%,80vh);margin:0;border-radius:8px}
-  .photo-gallery .photo-thumbs{grid-column:1;grid-row:1;flex-direction:column;padding:0;gap:8px;height:0;min-height:100%;overflow-x:hidden;overflow-y:auto;scrollbar-width:none}
-  .photo-gallery .photo-thumbs::-webkit-scrollbar{display:none}
+  .detail-gallery.photo-gallery{padding:19px 19px 16px}
+  .photo-gallery .photo-square{border-radius:8px}
   .photo-gallery .photo-thumbs button{width:64px;height:64px}
 }
-/* Phones: thumbnails start where the cards below start. */
-@media(max-width:767px){.photo-gallery .photo-thumbs{padding:10px 16px}}
 /* The description always spans the full card width (short descriptions used to shrink it, cutting its divider short). */
 .detail-primary>.detail-description{align-self:stretch}
