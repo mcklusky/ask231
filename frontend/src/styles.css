@@ -671,10 +671,24 @@ select option[value=""]{color:var(--muted)}
 .photo-square>button{box-shadow:0 1px 6px rgba(0,0,0,.2)}
 .photo-thumbs button{width:56px;height:56px;border-radius:6px}
 .photo-thumbs button:not(.selected){opacity:.75}
-@media(min-width:768px){.photo-thumbs{justify-content:safe center}}
 @media(max-width:767px){
   /* Pull the photo out to the screen edges: 15px page gutter + 1px card border on each side. */
   .detail-layout .detail-gallery.photo-gallery{width:calc(100% + 32px)!important;max-width:none;margin:0 -16px;border:0;border-radius:0}
   .detail-layout:has(.photo-square){border-top:0;border-top-left-radius:0;border-top-right-radius:0;overflow:visible}
   .photo-square>button{display:none}
 }
+/* Computers: line the photos up with the description below. The gallery gets the same 19px inset as the
+   description text; thumbnails run down the left, and the square photo fills the rest of the width
+   (up to 80% of the screen height), so photo and text share both edges. */
+@media(min-width:768px){
+  .detail-gallery.photo-gallery{padding:19px}
+  .detail-gallery.photo-gallery.has-thumbs{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;align-items:start}
+  .photo-gallery .photo-square{grid-column:2;grid-row:1;width:min(100%,80vh);margin:0;border-radius:8px}
+  .photo-gallery .photo-thumbs{grid-column:1;grid-row:1;flex-direction:column;padding:0;gap:8px;height:0;min-height:100%;overflow-x:hidden;overflow-y:auto;scrollbar-width:none}
+  .photo-gallery .photo-thumbs::-webkit-scrollbar{display:none}
+  .photo-gallery .photo-thumbs button{width:64px;height:64px}
+}
+/* Phones: thumbnails start where the cards below start. */
+@media(max-width:767px){.photo-gallery .photo-thumbs{padding:10px 16px}}
+/* The description always spans the full card width (short descriptions used to shrink it, cutting its divider short). */
+.detail-primary>.detail-description{align-self:stretch}
